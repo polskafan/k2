@@ -109,7 +109,7 @@ class MQTT2Log:
 
                     # TODO: Location task
                     self.csv_writer.writerow({
-                        'timestamp': time.time(),
+                        'timestamp': data['_timestamp'],
                         'speed': data['payload']['speed'],
                         'cadence': data['payload']['cadence'],
                         'power': data['payload']['realPower'],
