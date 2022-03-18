@@ -8,6 +8,10 @@ kettler = {
     'port': '/dev/ttyUSB0'
 }
 
+logger = {
+    'path': '/home/pi/k2/logs'
+}
+
 mqtt_credentials = {
     'server': '127.0.0.1',
     'port': 1883

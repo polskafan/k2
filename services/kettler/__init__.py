@@ -60,18 +60,20 @@ class Kettler2MQTT:
         while True:
             try:
                 status = await self.kettler.readStatus()
-                speed = status['speed'] / 3.6
                 time_elapsed = time.monotonic() - last_status
                 last_status = time.monotonic()
 
-                if dist is None:
-                    dist = float(status['distance'] * 1000)
-                else:
-                    dist += speed * time_elapsed
+                if status['speed'] > 0:
+                    speed = status['speed'] / 3.6
 
-                status['calcDistance'] = int(dist)
+                    if dist is None:
+                        dist = float(status['distance'] * 1000)
+                    else:
+                        dist += speed * time_elapsed
 
-                await self.update_mqtt("kettler/data", status)
+                    status['calcDistance'] = int(dist)
+
+                    await self.update_mqtt("kettler/data", status)
 
                 await asyncio.sleep(0.2)
             except asyncio.CancelledError:

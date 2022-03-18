@@ -91,13 +91,13 @@ class Heartrate2MQTT:
                             if 'RR-Interval' in value:
                                 await self.update_mqtt('heartrate/data',
                                                  {'hr': value['Heart Rate Measurement Value (uint8)']['Value'],
-                                                 'rr': value['RR-Interval']['RR-Interval']['RR-I0']['Value']})
+                                                 'rri': value['RR-Interval']['RR-Interval']['RR-I0']['Value']})
                                 print(value['Heart Rate Measurement Value (uint8)']['Value'],
                                       value['RR-Interval']['RR-Interval']['RR-I0']['Value'])
                             else:
                                 await self.update_mqtt('heartrate/data',
                                                  {'hr': value['Heart Rate Measurement Value (uint8)']['Value'],
-                                                 'rr': None})
+                                                 'rri': None})
                                 print(value['Heart Rate Measurement Value (uint8)']['Value'])
                         except KeyError:
                             print(f"Could not parse Heart Rate Data {str(value)}")
