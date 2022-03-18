@@ -1,0 +1,5 @@
+asyncio-mqtt==0.12.1
+paho-mqtt==1.6.1
+bleak~=0.14.2
+bleak-sigspec==0.0.4
+dbus-next==0.2.3
