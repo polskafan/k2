@@ -32,7 +32,7 @@ class Heartrate2MQTT:
                         # sleep forever
                         while True:
                             await asyncio.sleep(3600)
-                    except asyncio.CancelledError as e:
+                    except asyncio.CancelledError:
                         await self.update_mqtt("status/heartrate", {"connected": False})
                         self.client = None
                         return
