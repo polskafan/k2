@@ -26,6 +26,9 @@ class Heartrate2MQTT:
                     print("[MQTT] Connected.")
 
                     await self.update_mqtt("status/heartrate", {"connected": True})
+                    await self.update_mqtt("heartrate/connected", False)
+                    await self.update_mqtt("heartrate/data", {})
+                    await self.update_mqtt("heartrate/location", {})
 
                     try:
                         # do nothing while we are connected
@@ -106,6 +109,8 @@ class Heartrate2MQTT:
                     await client.start_notify(characteristic_heart_rate_measurement, callback)
                     await disconnect_event.wait()
                     await self.update_mqtt("heartrate/connected", False)
+                    await self.update_mqtt("heartrate/data", {})
+                    await self.update_mqtt("heartrate/location", {})
 
             except (asyncio.TimeoutError, BleakError) as e:
                 print(f"[Bluetooth] Error - {str(e)}")
