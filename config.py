@@ -14,5 +14,6 @@ logger = {
 
 mqtt_credentials = {
     'server': '127.0.0.1',
-    'port': 1883
+    'port': 1883,
+    'base_topic': 'k2'
 }

@@ -20,7 +20,7 @@ class Heartrate2MQTT:
                 async with AsyncExitStack() as stack:
                     self.client = Client(self.mqtt['server'],
                                          port=self.mqtt['port'],
-                                         will=Will("status/heartrate", '{"connected": false}', retain=True))
+                                         will=Will(f"{self.mqtt['base_topic']}/status/heartrate", '{"connected": false}', retain=True))
 
                     await stack.enter_async_context(self.client)
                     print("[MQTT] Connected.")
@@ -104,8 +104,6 @@ class Heartrate2MQTT:
                             return
 
                     await client.start_notify(characteristic_heart_rate_measurement, callback)
-
-                    await self.update_mqtt('heartrate', {})
                     await disconnect_event.wait()
                     await self.update_mqtt("heartrate/connected", False)
 
@@ -122,7 +120,7 @@ class Heartrate2MQTT:
         }
 
         if self.client is not None:
-            await self.client.publish(f'{key}',
+            await self.client.publish(f"{self.mqtt['base_topic']}/{key}",
                                       json.dumps(data),
                                       retain=True)
 

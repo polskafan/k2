@@ -28,29 +28,30 @@ class MQTT2Log:
                 async with AsyncExitStack() as stack:
                     self.client = Client(self.mqtt['server'],
                                          port=self.mqtt['port'],
-                                         will=Will("status/logger", '{"connected": false}', retain=True))
+                                         will=Will(f"{self.mqtt['base_topic']}/status/logger", '{"connected": false}', retain=True))
 
                     await stack.enter_async_context(self.client)
                     print("[MQTT] Connected.")
 
                     await self.update_mqtt("status/logger", {"connected": True})
+                    await self.update_mqtt("logger/status", {"status": "ready"})
 
                     # handle commands
-                    command_messages = await stack.enter_async_context(self.client.filtered_messages("logger/cmnd"))
+                    command_messages = await stack.enter_async_context(self.client.filtered_messages(f"{self.mqtt['base_topic']}/logger/cmnd"))
                     self.command_task = asyncio.create_task(self.handle_command_messages(command_messages))
 
                     # handle kettler
-                    kettler_messages = await stack.enter_async_context(self.client.filtered_messages("kettler/data"))
+                    kettler_messages = await stack.enter_async_context(self.client.filtered_messages(f"{self.mqtt['base_topic']}/kettler/data"))
                     self.kettler_task = asyncio.create_task(self.handle_kettler_messages(kettler_messages))
 
                     # handle heartrate
-                    heartrate_messages = await stack.enter_async_context(self.client.filtered_messages("heartrate/+"))
+                    heartrate_messages = await stack.enter_async_context(self.client.filtered_messages(f"{self.mqtt['base_topic']}/heartrate/+"))
                     self.heartrate_task = asyncio.create_task(self.handle_heartrate_messages(heartrate_messages))
 
-                    await self.client.subscribe("logger/cmnd")
-                    await self.client.subscribe("kettler/data")
-                    await self.client.subscribe("heartrate/connected")
-                    await self.client.subscribe("heartrate/data")
+                    await self.client.subscribe(f"{self.mqtt['base_topic']}/logger/cmnd")
+                    await self.client.subscribe(f"{self.mqtt['base_topic']}/kettler/data")
+                    await self.client.subscribe(f"{self.mqtt['base_topic']}/heartrate/connected")
+                    await self.client.subscribe(f"{self.mqtt['base_topic']}/heartrate/data")
 
                     await asyncio.gather(self.command_task, self.kettler_task, self.heartrate_task)
             except MqttError as e:
@@ -70,8 +71,6 @@ class MQTT2Log:
                         else:
                             filename = "%s.log.csv" % datetime.now().strftime("%Y-%m-%d_%H.%M.%S")
 
-                        # open file
-                        print(f"[Logger] {filename} open")
 
                         self.csv_file = open(os.path.join(logger_config['path'], filename), "w",
                                              newline="", encoding="utf-8")
@@ -81,12 +80,17 @@ class MQTT2Log:
                                                                                     'position_long', 'altitude',
                                                                                     'grade'])
                         self.csv_writer.writeheader()
+
+                        print(f"[Logger] {filename} open")
+                        await self.update_mqtt("logger/status", {'status': 'open', 'filename': filename})
                 elif data['action'] == "stop":
                     if self.csv_writer is not None and self.csv_file is not None:
                         self.csv_writer = None
                         self.csv_file.close()
                         self.csv_file = None
+
                         print(f"[Logger] closed")
+                        await self.update_mqtt("logger/status", {'status': 'closed'})
                     # conver to gpx
             # close file and convert
             except json.JSONDecodeError:
@@ -99,13 +103,16 @@ class MQTT2Log:
                 print(message.topic, data)
 
                 if self.csv_writer is not None and self.csv_file is not None:
-                    if 'connected' in self.heartrate and self.heartrate['connected']['payload']\
-                            and 'data' in self.heartrate:
-                        hr = self.heartrate['data']['payload']['hr']
-                        rri = self.heartrate['data']['payload']['rr']
-                    else:
-                        hr = "?"
-                        rri = "?"
+                    hr = "?"
+                    rri = "?"
+
+                    print(self.heartrate)
+                    if 'connected' in self.heartrate and self.heartrate['connected']['payload']:
+                        if 'data' in self.heartrate and 'hr' in self.heartrate['data']['payload']:
+                            hr = self.heartrate['data']['payload']['hr']
+
+                        if 'data' in self.heartrate and 'rri' in self.heartrate['data']['payload']:
+                            rri = self.heartrate['data']['payload']['rri']
 
                     # TODO: Location task
                     self.csv_writer.writerow({
@@ -129,9 +136,9 @@ class MQTT2Log:
             try:
                 data = json.loads(message.payload.decode())
                 print(message.topic, data)
-                if message.topic == "heartrate/connected":
+                if message.topic == f"{self.mqtt['base_topic']}/heartrate/connected":
                     self.heartrate['connected'] = data
-                elif message.topic == "heartrate/data":
+                elif message.topic  == f"{self.mqtt['base_topic']}/heartrate/data":
                     self.heartrate['data'] = data
             except json.JSONDecodeError:
                 pass
@@ -143,7 +150,7 @@ class MQTT2Log:
         }
 
         if self.client is not None:
-            await self.client.publish(f'{key}',
+            await self.client.publish(f"{self.mqtt['base_topic']}/{key}",
                                       json.dumps(data),
                                       retain=True)
 
