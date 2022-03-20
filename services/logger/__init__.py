@@ -19,6 +19,7 @@ class MQTT2Log:
 
         self.csv_file = None
         self.csv_writer = None
+        self.filename = None
 
         self.heartrate = dict()
 
@@ -37,7 +38,7 @@ class MQTT2Log:
                     await self.update_mqtt("logger/status", {"status": "ready"})
 
                     # handle commands
-                    command_messages = await stack.enter_async_context(self.client.filtered_messages(f"{self.mqtt['base_topic']}/logger/cmnd"))
+                    command_messages = await stack.enter_async_context(self.client.filtered_messages(f"{self.mqtt['base_topic']}/logger/cmnd/+"))
                     self.command_task = asyncio.create_task(self.handle_command_messages(command_messages))
 
                     # handle kettler
@@ -48,12 +49,17 @@ class MQTT2Log:
                     heartrate_messages = await stack.enter_async_context(self.client.filtered_messages(f"{self.mqtt['base_topic']}/heartrate/+"))
                     self.heartrate_task = asyncio.create_task(self.handle_heartrate_messages(heartrate_messages))
 
-                    await self.client.subscribe(f"{self.mqtt['base_topic']}/logger/cmnd")
+                    await self.client.subscribe(f"{self.mqtt['base_topic']}/logger/cmnd/+")
                     await self.client.subscribe(f"{self.mqtt['base_topic']}/kettler/data")
                     await self.client.subscribe(f"{self.mqtt['base_topic']}/heartrate/connected")
                     await self.client.subscribe(f"{self.mqtt['base_topic']}/heartrate/data")
 
-                    await asyncio.gather(self.command_task, self.kettler_task, self.heartrate_task)
+                    try:
+                        await asyncio.gather(self.command_task, self.kettler_task, self.heartrate_task)
+                    except asyncio.CancelledError:
+                        await self.update_mqtt("status/logger", {"connected": False})
+                        self.client = None
+                        return
             except MqttError as e:
                 print(f"[MQTT] Disconnected: {str(e)}. Reconnecting...")
                 self.client = None
@@ -62,18 +68,17 @@ class MQTT2Log:
     async def handle_command_messages(self, messages):
         async for message in messages:
             try:
-                data = json.loads(message.payload.decode())
-                print(message.topic, data)
-                if data['action'] == "start":
+                action = message.topic.split("/")[-1]
+                if action == "start":
                     if self.csv_writer is None and self.csv_file is None:
-                        if 'filename' in data:
-                            filename = data['filename']
+                        if len(message.payload) > 0:
+                            self.filename = os.path.join(logger_config['path'], message.payload.decode())
                         else:
-                            filename = "%s.log.csv" % datetime.now().strftime("%Y-%m-%d_%H.%M.%S")
+                            self.filename = os.path.join(logger_config['path'],
+                                                         "%s.log.csv" % datetime.now().strftime("%Y-%m-%d_%H.%M.%S"))
 
 
-                        self.csv_file = open(os.path.join(logger_config['path'], filename), "w",
-                                             newline="", encoding="utf-8")
+                        self.csv_file = open(self.filename, "w", newline="", encoding="utf-8")
                         self.csv_writer = csv.DictWriter(self.csv_file, fieldnames=['timestamp', 'speed', 'cadence',
                                                                                     'power', 'heart_rate', 'rri',
                                                                                     'distance', 'position_lat',
@@ -81,18 +86,19 @@ class MQTT2Log:
                                                                                     'grade'])
                         self.csv_writer.writeheader()
 
-                        print(f"[Logger] {filename} open")
-                        await self.update_mqtt("logger/status", {'status': 'open', 'filename': filename})
-                elif data['action'] == "stop":
+                        print(f"[Logger] Log opened: {self.filename}")
+                        await self.update_mqtt("logger/data", {'status': 'open', 'filename': self.filename})
+                elif action == "stop":
                     if self.csv_writer is not None and self.csv_file is not None:
                         self.csv_writer = None
                         self.csv_file.close()
                         self.csv_file = None
 
-                        print(f"[Logger] closed")
-                        await self.update_mqtt("logger/status", {'status': 'closed'})
-                    # conver to gpx
-            # close file and convert
+                        print(f"[Logger] Log closed: {self.filename}")
+                        await self.update_mqtt("logger/data", {'status': 'closed', 'filename': self.filename})
+
+                        self.filename = None
+                    # convert to gpx
             except json.JSONDecodeError:
                 pass
 
