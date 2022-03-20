@@ -58,12 +58,9 @@ class GPXController2MQTT:
                         await asyncio.gather(self.command_task, self.kettler_task)
                     except asyncio.CancelledError:
                         await self.update_mqtt("status/gpx", {"connected": False})
-                        self.client = None
                         return
             except MqttError as e:
                 print(f"[MQTT] Disconnected: {str(e)}. Reconnecting...")
-                self.client = None
-                pass
 
     async def update_tracks(self):
         await self.update_mqtt("controller/tracks/gpx", [track.get_info() for track in self.tracks])
@@ -80,6 +77,7 @@ class GPXController2MQTT:
                             try:
                                 self.selected_track = self.tracks[int(data['trackIdx'])]
                                 await self.update_mqtt("controller/track", self.selected_track.get_info())
+                                await self.send_command("logger/cmnd/start", '{"logLocation": true}')
                                 await self.send_command("kettler/cmnd/reset", "")
                             except (IndexError, ValueError, KeyError) as e:
                                 await self.update_mqtt("controller/track", {"error": str(e)})

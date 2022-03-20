@@ -28,10 +28,15 @@ class Kettler:
         return (await self.rpc(self.GET_ID)).decode("utf-8")
 
     async def setPower(self, power):
-        return (await self.rpc(self.SET_POWER % power)).decode("utf-8")
+        status_line = (await self.rpc(self.SET_POWER % power)).decode("utf-8")
+        return self.decode_status(status_line)
 
     async def readStatus(self):
         status_line = (await self.rpc(self.GET_STATUS)).decode("utf-8")
+        return self.decode_status(status_line)
+
+    @staticmethod
+    def decode_status(status_line):
         # heartRate cadence speed distanceInFunnyUnits destPower energy timeElapsed realPower
         # 000 052 095 000 030 0001 00:12 030
         segments = status_line.split()
@@ -40,8 +45,8 @@ class Kettler:
             result = {
                 # 'pulse': int(segments[0]),
                 'cadence': int(segments[1]),
-                'speed': float(segments[2])/10,
-                'distance': int(segments[3])/10,
+                'speed': float(segments[2]) / 10,
+                'distance': int(segments[3]) / 10,
                 'destPower': int(segments[4]),
                 'energy': int(segments[5]),
                 'timeElapsed': segments[6],

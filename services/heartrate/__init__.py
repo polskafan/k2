@@ -37,12 +37,9 @@ class Heartrate2MQTT:
                             await asyncio.sleep(3600)
                     except asyncio.CancelledError:
                         await self.update_mqtt("status/heartrate", {"connected": False})
-                        self.client = None
                         return
             except MqttError as e:
                 print(f"[MQTT] Disconnected: {str(e)}. Reconnecting...")
-                self.client = None
-                pass
 
     async def listen_heartrate(self):
         device_mac = heartrate_macs[0]
@@ -55,67 +52,71 @@ class Heartrate2MQTT:
                     print(f"[Bluetooth] Disconnected {c.is_connected}")
                     disconnect_event.set()
 
-                async with BleakClient(device_mac,
-                                       timeout=30,
-                                       adapter=heartrate_adapter,
-                                       disconnected_callback=disconnect_handler) as client:
-                    print(f"[Bluetooth] Connected {client.is_connected}")
-                    await self.update_mqtt("heartrate/connected", True)
-                    await client.get_services()
+                try:
+                    async with BleakClient(device_mac,
+                                           timeout=30,
+                                           adapter=heartrate_adapter,
+                                           disconnected_callback=disconnect_handler) as client:
+                        print(f"[Bluetooth] Connected {client.is_connected}")
+                        await self.update_mqtt("heartrate/connected", True)
+                        await client.get_services()
 
-                    heart_rate_service = None
-                    for service in client.services:
-                        if service.uuid.startswith('0000180d'):
-                            heart_rate_service = service
+                        heart_rate_service = None
+                        for service in client.services:
+                            if service.uuid.startswith('0000180d'):
+                                heart_rate_service = service
 
-                    characteristic_heart_rate_measurement = None
-                    characteristic_body_sensor_location = None
-                    for characteristic in heart_rate_service.characteristics:
-                        if characteristic.uuid.startswith('00002a37'):
-                            characteristic_heart_rate_measurement = characteristic
+                        characteristic_heart_rate_measurement = None
+                        characteristic_body_sensor_location = None
+                        for characteristic in heart_rate_service.characteristics:
+                            if characteristic.uuid.startswith('00002a37'):
+                                characteristic_heart_rate_measurement = characteristic
 
-                        if characteristic.uuid.startswith('00002a38'):
-                            characteristic_body_sensor_location = characteristic
+                            if characteristic.uuid.startswith('00002a38'):
+                                characteristic_body_sensor_location = characteristic
 
-                    body_sensor_location_data = await client.read_gatt_char(characteristic_body_sensor_location)
-                    body_sensor_location = bleak_sigspec.utils.get_char_value(body_sensor_location_data,
-                                                                              "body_sensor_location")
-                    print("Sensor location: %s" % str(body_sensor_location))
-                    await self.update_mqtt("heartrate/location", body_sensor_location)
+                        body_sensor_location_data = await client.read_gatt_char(characteristic_body_sensor_location)
+                        body_sensor_location = bleak_sigspec.utils.get_char_value(body_sensor_location_data,
+                                                                                  "body_sensor_location")
+                        print("Sensor location: %s" % str(body_sensor_location))
+                        await self.update_mqtt("heartrate/location", body_sensor_location)
 
-                    async def callback(_, data):
+                        async def callback(_, data):
+                            try:
+                                value = bleak_sigspec.utils.get_char_value(data, "heart_rate_measurement")
+                            except struct.error:
+                                print(f"Struct error {str(data)}")
+                                return
+
+                            try:
+                                if 'RR-Interval' in value:
+                                    await self.update_mqtt('heartrate/data',
+                                                     {'hr': value['Heart Rate Measurement Value (uint8)']['Value'],
+                                                     'rri': value['RR-Interval']['RR-Interval']['RR-I0']['Value']})
+                                    print(value['Heart Rate Measurement Value (uint8)']['Value'],
+                                          value['RR-Interval']['RR-Interval']['RR-I0']['Value'])
+                                else:
+                                    await self.update_mqtt('heartrate/data',
+                                                     {'hr': value['Heart Rate Measurement Value (uint8)']['Value'],
+                                                     'rri': None})
+                                    print(value['Heart Rate Measurement Value (uint8)']['Value'])
+                            except KeyError:
+                                print(f"Could not parse Heart Rate Data {str(value)}")
+                                return
+
+                        await client.start_notify(characteristic_heart_rate_measurement, callback)
                         try:
-                            value = bleak_sigspec.utils.get_char_value(data, "heart_rate_measurement")
-                        except struct.error:
-                            print(f"Struct error {str(data)}")
+                            await disconnect_event.wait()
+                            await self.update_mqtt("heartrate/connected", False)
+                            await self.update_mqtt("heartrate/data", {})
+                            await self.update_mqtt("heartrate/location", {})
+                        except asyncio.CancelledError:
+                            await client.stop_notify(characteristic_heart_rate_measurement)
                             return
-
-                        try:
-                            if 'RR-Interval' in value:
-                                await self.update_mqtt('heartrate/data',
-                                                 {'hr': value['Heart Rate Measurement Value (uint8)']['Value'],
-                                                 'rri': value['RR-Interval']['RR-Interval']['RR-I0']['Value']})
-                                print(value['Heart Rate Measurement Value (uint8)']['Value'],
-                                      value['RR-Interval']['RR-Interval']['RR-I0']['Value'])
-                            else:
-                                await self.update_mqtt('heartrate/data',
-                                                 {'hr': value['Heart Rate Measurement Value (uint8)']['Value'],
-                                                 'rri': None})
-                                print(value['Heart Rate Measurement Value (uint8)']['Value'])
-                        except KeyError:
-                            print(f"Could not parse Heart Rate Data {str(value)}")
-                            return
-
-                    await client.start_notify(characteristic_heart_rate_measurement, callback)
-                    await disconnect_event.wait()
-                    await self.update_mqtt("heartrate/connected", False)
-                    await self.update_mqtt("heartrate/data", {})
-                    await self.update_mqtt("heartrate/location", {})
-
+                except asyncio.CancelledError:
+                    return
             except (asyncio.TimeoutError, BleakError) as e:
                 print(f"[Bluetooth] Error - {str(e)}")
-                pass
-            finally:
                 print("Retrying...")
 
     async def update_mqtt(self, key, data):

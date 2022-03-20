@@ -39,7 +39,7 @@ class Kettler2MQTT:
                                 try:
                                     action = message.topic.split("/")[-1]
                                     if action == "power":
-                                        print(await self.kettler.setPower(int(message.payload.decode())))
+                                        self.target_power = int(message.payload.decode())
                                     elif action == "reset":
                                         print("[Kettler] Reset")
                                         await self.cancel_task(self.task)
@@ -48,12 +48,9 @@ class Kettler2MQTT:
                                     pass
                     except asyncio.CancelledError:
                         await self.update_mqtt("status/kettler", {"connected": False})
-                        self.client = None
                         return
             except MqttError as e:
                 print(f"[MQTT] Disconnected: {str(e)}. Reconnecting...")
-                self.client = None
-                pass
 
     async def kettler_task(self):
         # connect to bike
@@ -72,7 +69,7 @@ class Kettler2MQTT:
 
         while True:
             try:
-                status = await self.kettler.readStatus()
+                status = await self.kettler.setPower(self.target_power)
 
                 time_elapsed = time.monotonic() - last_status_timestamp
                 last_status_timestamp = time.monotonic()
