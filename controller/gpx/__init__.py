@@ -92,6 +92,10 @@ class GPXController2MQTT:
                     info = self.selected_track.get_info_at_distance(data['payload']['calcDistance'])
                     await self.update_mqtt("controller/location", info)
                     await self.send_command("kettler/cmnd/power", int(power_conversion(info.grade)))
+
+                    if info.progress >= 1:
+                        await self.send_command("logger/cmnd/stop", '')
+                        self.track_mode = None
                 except json.JSONDecodeError:
                     pass
 
