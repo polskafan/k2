@@ -18,7 +18,7 @@ Making a Kettler Ergoracer smart
 |k2/kettler/cmnd/reset      |XYZController   |Reset the Kettler bike                                         |Kettler      |
 |                           |                |                                                               |             |
 |k2/status/logger           |Logger          |MQTT status of the Logger component                            |             |
-|k2/logger/data             |Logger          |Current data of the Log                                        |             |
+|k2/logger/data             |Logger          |Current status of the log                                      |             |
 |k2/logger/cmnd/start       |XYZController   |Start to log data                                              |Logger       |
 |k2/logger/cmnd/stop        |XYZController   |Stop to log data                                               |Logger       |
 |                           |                |                                                               |             |
