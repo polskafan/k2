@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 import time
 
 from ant.core import driver
@@ -8,7 +6,7 @@ from ant.core.node import Node, Network
 from ant.core.constants import NETWORK_KEY_ANT_PLUS, NETWORK_NUMBER_PUBLIC
 
 from common.FitnessEquipmentTX import FitnessEquipmentTX
-from config import mqtt_credentials, antplus
+from config import antplus
 
 antnode = Node(driver.USB1Driver(device=antplus['device']))
 try:
@@ -16,9 +14,16 @@ try:
     network = Network(key=NETWORK_KEY_ANT_PLUS, name='N:ANT+')
     antnode.setNetworkKey(NETWORK_NUMBER_PUBLIC, network)
 
-    fitness_equipment = FitnessEquipmentTX(antnode, antplus['sensor_id'])
+    fitness_equipment = FitnessEquipmentTX(antnode, antplus['sensor_id'], callbacks={
+        'basic_resistance': lambda **kwargs: print(kwargs),
+        'target_power': lambda **kwargs: print(kwargs),
+        'wind_resistance': lambda **kwargs: print(kwargs),
+        'track_resistance': lambda **kwargs: print(kwargs),
+        'user_config': lambda **kwargs: print(kwargs)
+    })
     fitness_equipment.open()
-    print("SUCCESFULLY STARTED fitness equipment with ANT+ ID " + repr(antplus['sensor_id']))
+
+    print("STARTED fitness equipment with ANT+ ID " + repr(antplus['sensor_id']))
 
     while True:
         try:
