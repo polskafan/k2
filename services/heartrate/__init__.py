@@ -4,7 +4,7 @@ import json
 import os
 import time
 from contextlib import AsyncExitStack
-from config import mqtt_credentials, heartrate_macs, heartrate_adapter
+from config import mqtt_credentials, heartrate
 from bleak import BleakClient, BleakError
 import bleak_sigspec.utils
 import struct
@@ -42,7 +42,7 @@ class Heartrate2MQTT:
                 print(f"[MQTT] Disconnected: {str(e)}. Reconnecting...")
 
     async def listen_heartrate(self):
-        device_mac = heartrate_macs[0]
+        device_mac = heartrate['macs'][0]
 
         while True:
             try:
@@ -55,7 +55,7 @@ class Heartrate2MQTT:
                 try:
                     async with BleakClient(device_mac,
                                            timeout=30,
-                                           adapter=heartrate_adapter,
+                                           adapter=heartrate['adapter'],
                                            disconnected_callback=disconnect_handler) as client:
                         print(f"[Bluetooth] Connected {client.is_connected}")
                         await self.update_mqtt("heartrate/connected", True)

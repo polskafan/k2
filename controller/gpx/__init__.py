@@ -4,7 +4,7 @@ import json
 import os
 import time
 from contextlib import AsyncExitStack
-from config import mqtt_credentials, gpx_tracks, power_conversion
+from config import mqtt_credentials, gpx, power_conversion
 import glob
 from common.gpx_reader import GPXTrack
 from common.json_encoder import EnhancedJSONEncoder
@@ -26,7 +26,7 @@ class GPXController2MQTT:
 
     @staticmethod
     def load_tracks():
-        gpx_files = glob.glob(os.path.join(gpx_tracks['path'], "*.gpx"))
+        gpx_files = glob.glob(os.path.join(gpx['path'], "*.gpx"))
         return [GPXTrack(filename=gpx_file) for gpx_file in gpx_files]
 
     async def mqtt_connect(self):
@@ -78,10 +78,11 @@ class GPXController2MQTT:
                                 self.selected_track = self.tracks[int(data['trackIdx'])]
                                 await self.update_mqtt("controller/track", self.selected_track.get_info())
                                 await self.send_command("logger/cmnd/start", '{"logLocation": true}')
-                                await self.send_command("kettler/cmnd/reset", "")
+                                await self.send_command("kettler/cmnd/reset", '')
                             except (IndexError, ValueError, KeyError) as e:
                                 await self.update_mqtt("controller/track", {"error": str(e)})
-                except json.JSONDecodeError:
+                except json.JSONDecodeError as e:
+                    print(str(e), message.payload.decode())
                     pass
 
     async def handle_kettler_messages(self, messages):

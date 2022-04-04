@@ -23,7 +23,7 @@ class Kettler2MQTT:
                 async with AsyncExitStack() as stack:
                     self.client = Client(self.mqtt['server'],
                                          port=self.mqtt['port'],
-                                         will=Will(f"{self.mqtt['base_topic']}status/kettler", '{"connected": false}',
+                                         will=Will(f"{self.mqtt['base_topic']}/status/kettler", '{"connected": false}',
                                                    retain=True))
 
                     await stack.enter_async_context(self.client)

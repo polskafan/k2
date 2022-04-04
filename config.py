@@ -1,18 +1,21 @@
-heartrate_adapter = "hci0"
+heartrate = {
+    'adapter': 'hci0',
+    'macs': ['FB:E1:27:30:7A:7D']
+}
 
-heartrate_macs = [
-    "FB:E1:27:30:7A:7D"
-]
+antplus = {
+    'device': '/dev/ttyUSB0'
+}
 
 kettler = {
-    'port': '/dev/ttyUSB0'
+    'port': '/dev/ttyUSB1'
 }
 
 logger = {
     'path': '/home/pi/k2/logs'
 }
 
-gpx_tracks = {
+gpx = {
     'path': '/home/pi/k2/tracks'
 }
 
