@@ -17,9 +17,14 @@ class ControllerManager2MQTT(Component2MQTT):
         self.register_handler("kettler/data", self.handle_kettler_messages)
 
         self.controllers = {
-            "gpx": GPXController(self),
-            "ant": ANTController(self)
+            "gpx": GPXController(self)
         }
+
+        self.ant = ANTController(self)
+
+    async def set_track_mode(self, track_mode = None):
+        self.track_mode = track_mode
+        await self.update_mqtt("controller/trackMode", track_mode)
 
     async def init_state(self):
         await self.update_mqtt("controller/trackMode", None)
@@ -54,9 +59,15 @@ class ControllerManager2MQTT(Component2MQTT):
             if controller is not None:
                 await controller.handle_kettler_message(message)
 
-    async def clear_track_mode(self):
-        self.track_mode = None
-        await self.update_mqtt("controller/trackMode", None)
+            await self.ant.handle_kettler_message(message)
+
+    async def ant_power(self, power):
+        # auto enable ant controller, if no other controller is active
+        if self.track_mode is None:
+            await self.set_track_mode("ant")
+
+        if self.track_mode == "ant":
+            await self.send_command("kettler/cmnd/power", power)
 
 async def main():
     mqtt_server = ControllerManager2MQTT(mqtt_credentials)

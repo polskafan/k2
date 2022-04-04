@@ -11,16 +11,9 @@ from config import antplus, power
 class ANTController:
     def __init__(self, manager):
         self.manager = manager
-        self.task = None
+        self.task = asyncio.create_task(self.ant_task())
         self.fitness_equipment = None
         self.loop = None
-
-    async def init_state(self):
-        pass
-
-    async def load_track(self, _):
-        self.task = asyncio.create_task(self.ant_task())
-        return True
 
     async def ant_task(self):
         self.loop = asyncio.get_event_loop()
@@ -51,9 +44,6 @@ class ANTController:
 
         antnode.stop()
 
-    async def handle_command_message(self, message):
-        pass
-
     async def handle_kettler_message(self, message):
         minutes, seconds = message['payload']['timeElapsed'].split(":", 2)
         self.fitness_equipment.data.time_elapsed = (minutes*60 + seconds) * 4
@@ -63,7 +53,6 @@ class ANTController:
         self.fitness_equipment.data.instant_power = message['payload']['realPower']
 
     def update_power(self, watts):
-        self.loop.create_task(self.manager.send_command("kettler/cmnd/power",
-                                                        power['minmax'](value=watts,
-                                                                        lower=power['lower_limit'],
-                                                                        upper=power['upper_limit'])))
+        self.loop.create_task(self.manager.ant_power(power['minmax'](value=watts,
+                                                                     lower=power['lower_limit'],
+                                                                     upper=power['upper_limit'])))
