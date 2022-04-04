@@ -20,11 +20,18 @@ gpx = {
     'path': '/home/pi/k2/tracks'
 }
 
-def power_conversion(grade):
-    idle_power = 100
-    max_power = 200
-    max_percentage = 0.15
-    return min(max_power, max(max_power * (grade / max_percentage), 0) + idle_power)
+power = {
+    "lower_limit": 25,
+    "upper_limit": 600,
+    "min_power": 80,
+    "max_power": 280,
+    "max_grade": 0.15,
+    "minmax": lambda value, lower, upper: min(upper, max(value, lower)),
+    "grade": lambda grade: power['minmax'](value=(power['max_power'] - power['min_power']) * (grade / power['max_grade']) + power['min_power'],
+                                           lower=power['min_power'],
+                                           upper=power['max_power']),
+    "resistance": lambda resistance: power['min_power'] + resistance * (power['max_power'] - power['min_power'])
+}
 
 mqtt_credentials = {
     'server': '127.0.0.1',

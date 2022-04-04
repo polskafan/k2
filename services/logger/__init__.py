@@ -143,11 +143,9 @@ class MQTT2Log(Component2MQTT):
             except json.JSONDecodeError:
                 pass
 
-
 async def main():
     mqtt_server = MQTT2Log(mqtt_credentials)
     await mqtt_server.mqtt_connect(will_topic="logger")
-
 
 def run():
     # Change to the "Selector" event loop for Windows
@@ -158,7 +156,6 @@ def run():
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Goodbye...")
-
 
 if __name__ == '__main__':
     run()

@@ -21,7 +21,8 @@ class Component2MQTT:
                 async with AsyncExitStack() as stack:
                     self.client = Client(self.mqtt['server'],
                                          port=self.mqtt['port'],
-                                         will=Will(f"{self.mqtt['base_topic']}/status/{will_topic}", '{"connected": false}',
+                                         will=Will(f"{self.mqtt['base_topic']}/status/{will_topic}",
+                                                   '{"connected": false}',
                                                    retain=True))
 
                     await stack.enter_async_context(self.client)
@@ -75,7 +76,11 @@ class Component2MQTT:
     async def send_command(self, key, data):
         await self.client.publish(f"{self.mqtt['base_topic']}/{key}", data)
 
-    async def cancel_task(self, task):
+    async def clear_topic(self, key):
+        await self.client.publish(f"{self.mqtt['base_topic']}/{key}", "")
+
+    @staticmethod
+    async def cancel_task(task):
         if task.done():
             return
         try:

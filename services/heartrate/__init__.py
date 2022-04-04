@@ -1,7 +1,5 @@
 import asyncio
-import json
 import os
-import time
 from common.mqtt_component import Component2MQTT
 from config import mqtt_credentials, heartrate
 from bleak import BleakClient, BleakError
@@ -92,11 +90,9 @@ class Heartrate2MQTT(Component2MQTT):
                 print(f"[Bluetooth] Error - {str(e)}")
                 print("Retrying...")
 
-
 async def main():
     mqtt_server = Heartrate2MQTT(mqtt_credentials)
     await asyncio.gather(mqtt_server.mqtt_connect(will_topic="heartrate"), mqtt_server.listen_heartrate())
-
 
 def run():
     # Change to the "Selector" event loop for Windows
@@ -108,6 +104,6 @@ def run():
     except KeyboardInterrupt:
         print("Goodbye...")
 
-
 if __name__ == '__main__':
     run()
+

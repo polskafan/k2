@@ -68,11 +68,9 @@ class Kettler2MQTT(Component2MQTT):
                 print("[Kettler] Disconnected")
                 break
 
-
 async def main():
     mqtt_server = Kettler2MQTT(mqtt_credentials)
     await asyncio.gather(mqtt_server.mqtt_connect(will_topic="kettler"))
-
 
 def run():
     # Change to the "Selector" event loop for Windows
@@ -83,7 +81,6 @@ def run():
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Goodbye...")
-
 
 if __name__ == '__main__':
     run()

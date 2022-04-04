@@ -11,8 +11,8 @@ class FitnessEquipmentData:
     speed: int = 0                  # unit: 0.001 m/s
     resistance: int = 0             # unit: 0.5%
     instant_cadence: int = 0        # unit: 1 rpm
-    instant_power: int = 0          # unit:
-    instant_heartrate: int = None   # unit: bpm
+    instant_power: int = 0          # unit: 1 W
+    instant_heartrate: int = None   # unit: 1 bpm
 
 
 class FitnessEquipmentTX:
