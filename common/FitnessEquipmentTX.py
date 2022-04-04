@@ -14,6 +14,8 @@ class FecListener:
     def __init__(self, callbacks=None):
         if callbacks is not None:
             self.callbacks = dict(callbacks)
+        else:
+            self.callbacks = dict()
 
     def process(self, msg, _):
         if isinstance(msg, message.ChannelAcknowledgedDataMessage):

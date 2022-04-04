@@ -4,7 +4,8 @@ heartrate = {
 }
 
 antplus = {
-    'device': '/dev/ttyUSB0'
+    'device': '/dev/ttyUSB0',
+    'sensor_id': 17012
 }
 
 kettler = {
