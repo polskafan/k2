@@ -1,14 +1,12 @@
 import asyncio
-from asyncio_mqtt import Client, MqttError, Will
 import json
 import os
-import time
-from contextlib import AsyncExitStack
 from config import mqtt_credentials, logger as logger_config
 from datetime import datetime
 import csv
 import dataclasses
 from typing import IO
+from common.mqtt_component import Component2MQTT
 
 @dataclasses.dataclass
 class CSVWriter:
@@ -33,68 +31,22 @@ class LogDatapoint:
     heart_rate: int = None
     rri: float = None
 
-class MQTT2Log:
+class MQTT2Log(Component2MQTT):
     def __init__(self, mqtt):
-        self.mqtt = mqtt
-        self.client = None
-
-        self.command_task = None
-        self.kettler_task = None
-        self.heartrate_task = None
+        super().__init__(mqtt)
 
         self.csv = None
         self.log_location = False
         self.log_heartrate = False
         self.datapoint = LogDatapoint()
 
-    async def mqtt_connect(self):
-        while True:
-            try:
-                async with AsyncExitStack() as stack:
-                    self.client = Client(self.mqtt['server'],
-                                         port=self.mqtt['port'],
-                                         will=Will(f"{self.mqtt['base_topic']}/status/logger", '{"connected": false}', retain=True))
+        self.register_handler("logger/cmnd/+", self.handle_command_messages)
+        self.register_handler("kettler/data", self.handle_kettler_messages)
+        self.register_handler("controller/location", self.handle_location_messages)
+        self.register_handler("heartrate/+", self.handle_heartrate_messages)
 
-                    await stack.enter_async_context(self.client)
-                    print("[MQTT] Connected.")
-
-                    await self.update_mqtt("status/logger", {"connected": True})
-                    await self.update_mqtt("logger/data", {"status": "ready"})
-
-                    # handle commands
-                    command_messages = await stack.enter_async_context(
-                        self.client.filtered_messages(f"{self.mqtt['base_topic']}/logger/cmnd/+"))
-                    self.command_task = asyncio.create_task(self.handle_command_messages(command_messages))
-
-                    # handle kettler
-                    kettler_messages = await stack.enter_async_context(
-                        self.client.filtered_messages(f"{self.mqtt['base_topic']}/kettler/data"))
-                    self.kettler_task = asyncio.create_task(self.handle_kettler_messages(kettler_messages))
-
-                    # handle location
-                    location_messages = await stack.enter_async_context(
-                        self.client.filtered_messages(f"{self.mqtt['base_topic']}/controller/location"))
-                    self.location_task = asyncio.create_task(self.handle_location_messages(location_messages))
-
-                    # handle heartrate
-                    heartrate_messages = await stack.enter_async_context(
-                        self.client.filtered_messages(f"{self.mqtt['base_topic']}/heartrate/+"))
-                    self.heartrate_task = asyncio.create_task(self.handle_heartrate_messages(heartrate_messages))
-
-                    await self.client.subscribe(f"{self.mqtt['base_topic']}/logger/cmnd/+")
-                    await self.client.subscribe(f"{self.mqtt['base_topic']}/kettler/data")
-                    await self.client.subscribe(f"{self.mqtt['base_topic']}/controller/location")
-                    await self.client.subscribe(f"{self.mqtt['base_topic']}/heartrate/connected")
-                    await self.client.subscribe(f"{self.mqtt['base_topic']}/heartrate/data")
-
-                    try:
-                        await asyncio.gather(self.command_task, self.kettler_task,
-                                             self.location_task, self.heartrate_task)
-                    except asyncio.CancelledError:
-                        await self.update_mqtt("status/logger", {"connected": False})
-                        return
-            except MqttError as e:
-                print(f"[MQTT] Disconnected: {str(e)}. Reconnecting...")
+    async def init_state(self):
+        await self.update_mqtt("logger/data", {"status": "ready"})
 
     async def open_log(self, data):
         if 'filename' in data and len(data['filename']) > 0:
@@ -123,7 +75,7 @@ class MQTT2Log:
             print(f"[Logger] Log closed: {self.csv.filename}")
             await self.update_mqtt("logger/data", {'status': 'closed', 'filename': self.csv.filename})
 
-            # convert to gpx ?
+            # TODO: convert to gpx ?
 
             self.csv = None
             self.log_location = False
@@ -191,30 +143,10 @@ class MQTT2Log:
             except json.JSONDecodeError:
                 pass
 
-    async def update_mqtt(self, key, data):
-        data = {
-            'payload': data,
-            '_timestamp': int(time.time())
-        }
-
-        if self.client is not None:
-            await self.client.publish(f"{self.mqtt['base_topic']}/{key}",
-                                      json.dumps(data),
-                                      retain=True)
-
-    async def cancel_task(self, task):
-        if task.done():
-            return
-        try:
-            task.cancel()
-            await task
-        except asyncio.CancelledError:
-            pass
-
 
 async def main():
     mqtt_server = MQTT2Log(mqtt_credentials)
-    await mqtt_server.mqtt_connect()
+    await mqtt_server.mqtt_connect(will_topic="logger")
 
 
 def run():

@@ -63,11 +63,7 @@ class FitnessEquipmentTX:
             else:
                 payload = self.page_general()
 
-            payload = bytearray(payload)
-            ant_msg = message.ChannelBroadcastDataMessage(self.channel.number, data=payload)
-            self.antnode.send(ant_msg)
-
-            # tick
+            self.antnode.send(message.ChannelBroadcastDataMessage(self.channel.number, data=bytearray(payload)))
             self.tick += 1
         except Exception as e:
             print("Exception in FitnessEquipmentTX: " + repr(e))

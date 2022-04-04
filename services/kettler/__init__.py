@@ -1,56 +1,34 @@
 import asyncio
-from asyncio_mqtt import Client, MqttError, Will
-import json
 import os
 import time
-from contextlib import AsyncExitStack
 from config import mqtt_credentials, kettler
 from common.kettler import Kettler
+from common.mqtt_component import Component2MQTT
 
-class Kettler2MQTT:
+class Kettler2MQTT(Component2MQTT):
     def __init__(self, mqtt):
-        self.mqtt = mqtt
-        self.client = None
+        super().__init__(mqtt)
+
         self.kettler = None
         self.dist = None
         self.target_power = 100
 
         self.task = asyncio.create_task(self.kettler_task())
 
-    async def mqtt_connect(self):
-        while True:
+        self.register_handler("kettler/cmnd/+", self.handle_command_messages)
+
+    async def handle_command_messages(self, messages):
+        async for message in messages:
             try:
-                async with AsyncExitStack() as stack:
-                    self.client = Client(self.mqtt['server'],
-                                         port=self.mqtt['port'],
-                                         will=Will(f"{self.mqtt['base_topic']}/status/kettler", '{"connected": false}',
-                                                   retain=True))
-
-                    await stack.enter_async_context(self.client)
-                    print("[MQTT] Connected.")
-
-                    await self.update_mqtt("status/kettler", {"connected": True})
-
-                    try:
-                        cmd_topic = f"{self.mqtt['base_topic']}/kettler/cmnd/+"
-                        async with self.client.filtered_messages(cmd_topic) as messages:
-                            await self.client.subscribe(cmd_topic)
-                            async for message in messages:
-                                try:
-                                    action = message.topic.split("/")[-1]
-                                    if action == "power":
-                                        self.target_power = int(message.payload.decode())
-                                    elif action == "reset":
-                                        print("[Kettler] Reset")
-                                        await self.cancel_task(self.task)
-                                        self.task = asyncio.create_task(self.kettler_task())
-                                except (IndexError, ValueError):
-                                    pass
-                    except asyncio.CancelledError:
-                        await self.update_mqtt("status/kettler", {"connected": False})
-                        return
-            except MqttError as e:
-                print(f"[MQTT] Disconnected: {str(e)}. Reconnecting...")
+                action = message.topic.split("/")[-1]
+                if action == "power":
+                    self.target_power = int(message.payload.decode())
+                elif action == "reset":
+                    print("[Kettler] Reset")
+                    await self.cancel_task(self.task)
+                    self.task = asyncio.create_task(self.kettler_task())
+            except (IndexError, ValueError):
+                pass
 
     async def kettler_task(self):
         # connect to bike
@@ -90,36 +68,10 @@ class Kettler2MQTT:
                 print("[Kettler] Disconnected")
                 break
 
-    async def update_mqtt(self, key, data, precise_timestamps = False):
-        if precise_timestamps:
-            data = {
-                'payload': data,
-                '_timestamp': int(time.time_ns() / 1000000) / 1000
-            }
-        else:
-            data = {
-                'payload': data,
-                '_timestamp': int(time.time())
-            }
-
-        if self.client is not None:
-            await self.client.publish(f"{self.mqtt['base_topic']}/{key}",
-                                      json.dumps(data),
-                                      retain=True)
-
-    async def cancel_task(self, task):
-        if task.done():
-            return
-        try:
-            task.cancel()
-            await task
-        except asyncio.CancelledError:
-            pass
-
 
 async def main():
     mqtt_server = Kettler2MQTT(mqtt_credentials)
-    await asyncio.gather(mqtt_server.mqtt_connect())
+    await asyncio.gather(mqtt_server.mqtt_connect(will_topic="kettler"))
 
 
 def run():

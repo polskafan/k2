@@ -1,45 +1,18 @@
 import asyncio
-from asyncio_mqtt import Client, MqttError, Will
 import json
 import os
 import time
-from contextlib import AsyncExitStack
+from common.mqtt_component import Component2MQTT
 from config import mqtt_credentials, heartrate
 from bleak import BleakClient, BleakError
 import bleak_sigspec.utils
 import struct
 
-class Heartrate2MQTT:
-    def __init__(self, mqtt):
-        self.mqtt = mqtt
-        self.client = None
-
-    async def mqtt_connect(self):
-        while True:
-            try:
-                async with AsyncExitStack() as stack:
-                    self.client = Client(self.mqtt['server'],
-                                         port=self.mqtt['port'],
-                                         will=Will(f"{self.mqtt['base_topic']}/status/heartrate", '{"connected": false}', retain=True))
-
-                    await stack.enter_async_context(self.client)
-                    print("[MQTT] Connected.")
-
-                    await self.update_mqtt("status/heartrate", {"connected": True})
-                    await self.update_mqtt("heartrate/connected", False)
-                    await self.update_mqtt("heartrate/data", {})
-                    await self.update_mqtt("heartrate/location", {})
-
-                    try:
-                        # do nothing while we are connected
-                        # sleep forever
-                        while True:
-                            await asyncio.sleep(3600)
-                    except asyncio.CancelledError:
-                        await self.update_mqtt("status/heartrate", {"connected": False})
-                        return
-            except MqttError as e:
-                print(f"[MQTT] Disconnected: {str(e)}. Reconnecting...")
+class Heartrate2MQTT(Component2MQTT):
+    async def init_state(self):
+        await self.update_mqtt("heartrate/connected", False)
+        await self.update_mqtt("heartrate/data", {})
+        await self.update_mqtt("heartrate/location", {})
 
     async def listen_heartrate(self):
         device_mac = heartrate['macs'][0]
@@ -119,30 +92,10 @@ class Heartrate2MQTT:
                 print(f"[Bluetooth] Error - {str(e)}")
                 print("Retrying...")
 
-    async def update_mqtt(self, key, data):
-        data = {
-            'payload': data,
-            '_timestamp': int(time.time())
-        }
-
-        if self.client is not None:
-            await self.client.publish(f"{self.mqtt['base_topic']}/{key}",
-                                      json.dumps(data),
-                                      retain=True)
-
-    async def cancel_task(self, task):
-        if task.done():
-            return
-        try:
-            task.cancel()
-            await task
-        except asyncio.CancelledError:
-            pass
-
 
 async def main():
     mqtt_server = Heartrate2MQTT(mqtt_credentials)
-    await asyncio.gather(mqtt_server.mqtt_connect(), mqtt_server.listen_heartrate())
+    await asyncio.gather(mqtt_server.mqtt_connect(will_topic="heartrate"), mqtt_server.listen_heartrate())
 
 
 def run():
