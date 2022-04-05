@@ -49,18 +49,19 @@ class Kettler2MQTT(Component2MQTT):
             try:
                 status = await self.kettler.setPower(self.target_power)
 
-                time_elapsed = time.monotonic() - last_status_timestamp
-                last_status_timestamp = time.monotonic()
+                if status is not None:
+                    time_elapsed = time.monotonic() - last_status_timestamp
+                    last_status_timestamp = time.monotonic()
 
-                if status['speed'] > 0:
-                    speed = status['speed'] / 3.6
-                    self.dist += speed * time_elapsed
+                    if status['speed'] > 0:
+                        speed = status['speed'] / 3.6
+                        self.dist += speed * time_elapsed
 
-                status['calcDistance'] = int(self.dist)
+                    status['calcDistance'] = int(self.dist)
 
-                if status != last_status_message:
-                    await self.update_mqtt("kettler/data", status, precise_timestamps=True)
-                    last_status_message = status
+                    if status != last_status_message:
+                        await self.update_mqtt("kettler/data", status, precise_timestamps=True)
+                        last_status_message = status
 
                 await asyncio.sleep(0.2)
             except asyncio.CancelledError:
