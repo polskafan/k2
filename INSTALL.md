@@ -7,14 +7,22 @@ Step 0: Connect hardware requirements
 Step 1: Install prerequisites
 -----------
 Install an MQTT broker
-```console
+```bash
 sudo apt install mosquitto python3-virtualenv
+```
+
+(Optional) Step 1b: 
+-----------
+Run the following commands to allow MQTT connections from outside of localhost (e.g. for remote control)
+```bash
+sudo cp scripts/mosquitto/default.conf /etc/mosquitto/conf.d/default.conf
+sudo service mosquitto restart
 ```
 
 Step 2: Checkout and install project
 ----------
 Clone the project from GitHub
-```console
+```bash
 git clone https://github.com/polskafan/k2.git
 cd k2
 python3 -m venv venv
@@ -28,16 +36,8 @@ for a Garmin2 ANT+ stick and pl2303 RS232 adapter with the IDs of your
 devices. You can find the IDs by running `lsusb`.
 
 After that install everything with
-```
+```bash
 bash install.sh 
-```
-
-(Optional) Step 3: Allow outside MQTT connections for debugging
-----------
-To allow MQTT connections from outside of localhost run the following commands
-```console
-sudo cp scripts/mosquitto/default.conf /etc/mosquitto/conf.d/default.conf
-sudo service mosquitto restart
 ```
 
 Disclaimer
