@@ -7,7 +7,7 @@ import bleak_sigspec.utils
 import struct
 
 class Heartrate2MQTT(Component2MQTT):
-    async def init_state(self):
+    async def on_connect(self):
         await self.update_mqtt("heartrate/connected", False)
         await self.update_mqtt("heartrate/data", {})
         await self.update_mqtt("heartrate/location", {})

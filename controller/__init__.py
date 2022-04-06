@@ -3,8 +3,8 @@ import os
 
 from common.mqtt_component import Component2MQTT
 from config import mqtt_credentials
-from gpx import GPXController
-from antplus import ANTController
+from controller.gpx import GPXController
+from controller.antplus import ANTController
 import json
 
 class ControllerManager2MQTT(Component2MQTT):
@@ -26,7 +26,7 @@ class ControllerManager2MQTT(Component2MQTT):
         self.track_mode = track_mode
         await self.update_mqtt("controller/trackMode", track_mode)
 
-    async def init_state(self):
+    async def on_connect(self):
         await self.update_mqtt("controller/trackMode", None)
         await self.update_mqtt("controller/track", None)
         await self.clear_topic("controller/location")

@@ -29,7 +29,7 @@ class Component2MQTT:
                     print("[MQTT] Connected.")
 
                     await self.update_mqtt(f"status/{will_topic}", {"connected": True})
-                    await self.init_state()
+                    await self.on_connect()
 
                     # create handler tasks
                     for (topic_pattern, handler) in self.handlers.items():
@@ -45,15 +45,23 @@ class Component2MQTT:
                             while True:
                                 await asyncio.sleep(3600)
                     except asyncio.CancelledError:
+                        await self.on_cancel()
                         await self.update_mqtt(f"status/{will_topic}", {"connected": False})
                         for task in self.handler_tasks:
                             await self.cancel_task(task)
                         return
             except MqttError as e:
                 print(f"[MQTT] Disconnected: {str(e)}. Reconnecting...")
+                await self.on_disconnect()
                 await asyncio.sleep(5)
 
-    async def init_state(self):
+    async def on_connect(self):
+        return
+
+    async def on_disconnect(self):
+        return
+
+    async def on_cancel(self):
         return
 
     async def update_mqtt(self, key, data, precise_timestamps = False):

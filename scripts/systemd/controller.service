@@ -1,0 +1,15 @@
+[Unit]
+Description=K2 Controller Service
+After=network.target
+
+[Service]
+WorkingDirectory=###BASE_DIRECTORY###
+ExecStart=###BASE_DIRECTORY###/venv/bin/python -m controller.__init__
+KillMode=process
+Restart=on-failure
+NoNewPrivileges=true
+User=###USERID###
+Group=###GROUPID###
+
+[Install]
+WantedBy=multi-user.target

@@ -45,7 +45,7 @@ class MQTT2Log(Component2MQTT):
         self.register_handler("controller/location", self.handle_location_messages)
         self.register_handler("heartrate/+", self.handle_heartrate_messages)
 
-    async def init_state(self):
+    async def on_connect(self):
         await self.update_mqtt("logger/data", {"status": "ready"})
 
     async def open_log(self, data):
