@@ -11,14 +11,6 @@ Install an MQTT broker
 sudo apt install mosquitto python3-virtualenv
 ```
 
-(Optional) Step 1b: Remote control
------------
-Run the following commands to allow MQTT connections from outside of localhost (e.g. for remote control)
-```bash
-sudo cp scripts/mosquitto/default.conf /etc/mosquitto/conf.d/default.conf
-sudo service mosquitto restart
-```
-
 Step 2: Checkout and install project
 ----------
 Clone the project from GitHub
@@ -27,6 +19,14 @@ git clone https://github.com/polskafan/k2.git
 cd k2
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
+```
+
+(Optional) Step 2b: Remote control
+-----------
+Run the following commands to allow MQTT connections from outside of localhost (e.g. for remote control)
+```bash
+sudo cp scripts/mosquitto/default.conf /etc/mosquitto/conf.d/default.conf
+sudo service mosquitto restart
 ```
 
 Step 3: Edit udev rules and install drivers and autorun scripts
