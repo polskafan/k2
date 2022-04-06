@@ -7,6 +7,7 @@ BASE_DIRECTORY=$(pwd)
 # Install ANT+ Driver
 sudo cp scripts/udev/51-garmin.rules /etc/udev/rules.d
 sudo cp scripts/udev/99-kettler.rules /etc/udev/rules.d
+sudo udevadm trigger
 
 # Install Autostart Scripts
 sed "s|###USERID###|$USERID|g;s|###GROUPID###|$GROUPID|g;s|###BASE_DIRECTORY###|$BASE_DIRECTORY|g" scripts/systemd/kettler.service > /tmp/kettler.service
