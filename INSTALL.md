@@ -20,3 +20,13 @@ python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 bash install.sh
 ```
+
+
+
+(Optional) Step 3: Allow outside MQTT connections for debugging
+----------
+To allow MQTT connections from outside of localhost run the following commands
+```console
+sudo cp scripts/mosquitto/default.conf /etc/mosquitto/conf.d/default.conf
+sudo service mosquitto restart
+```
