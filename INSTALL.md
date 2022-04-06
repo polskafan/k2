@@ -11,7 +11,7 @@ Install an MQTT broker
 sudo apt install mosquitto python3-virtualenv
 ```
 
-(Optional) Step 1b: 
+(Optional) Step 1b: Remote control
 -----------
 Run the following commands to allow MQTT connections from outside of localhost (e.g. for remote control)
 ```bash
