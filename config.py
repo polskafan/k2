@@ -4,12 +4,12 @@ heartrate = {
 }
 
 antplus = {
-    'device': '/dev/ttyUSB0',
-    'sensor_id': 17012
+    'device': '/dev/ant',
+    'sensor_id': 12345
 }
 
 kettler = {
-    'port': '/dev/ttyUSB1'
+    'port': '/dev/kettler'
 }
 
 logger = {
