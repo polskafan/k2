@@ -4,7 +4,9 @@ heartrate = {
 }
 
 antplus = {
-    'sensor_id': 12345
+    'sensor_id': 12345,
+    'vendor_id': 0x0fcf,
+    'product_id': 0x1008
 }
 
 kettler = {

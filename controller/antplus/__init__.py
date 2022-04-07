@@ -1,6 +1,6 @@
 import asyncio
 
-from ant.core import driver
+from common import ant_driver
 from ant.core.exceptions import ANTException
 from ant.core.node import Node, Network
 from ant.core.constants import NETWORK_KEY_ANT_PLUS, NETWORK_NUMBER_PUBLIC
@@ -19,7 +19,7 @@ class ANTController:
     async def ant_task(self):
         self.loop = asyncio.get_event_loop()
 
-        antnode = Node(driver.USB2Driver())
+        antnode = Node(ant_driver.USB2Driver(idVendor=antplus['vendor_id'], idProduct=antplus['product_id']))
         try:
             antnode.start()
             network = Network(key=NETWORK_KEY_ANT_PLUS, name='N:ANT+')
