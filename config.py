@@ -4,7 +4,6 @@ heartrate = {
 }
 
 antplus = {
-    'device': '/dev/ant',
     'sensor_id': 12345
 }
 

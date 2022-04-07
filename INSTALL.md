@@ -29,17 +29,22 @@ sudo cp scripts/mosquitto/default.conf /etc/mosquitto/conf.d/default.conf
 sudo service mosquitto restart
 ```
 
-Step 3: Edit udev rules and install drivers and autorun scripts
+Step 3: Setup udev rules, install drivers and autorun scripts
 ----------
 Edit the `scripts/udev/99-kettler.rules` file and replace the example IDs
-for a Garmin2 ANT+ stick and pl2303 RS232 adapter with the IDs of your
-devices. You can find the IDs by running `lsusb`.
+for a generic pl2303 RS232 adapter with the IDs of your device.
+You can find the IDs by running `lsusb`.
 
 After that install everything with
-```bash
+```
 bash install.sh 
 ```
 
 Disclaimer
 ----------
-Tested with Kettler Ergoracer GT, Raspberry Pi 3B/4 (Raspbian Bullseye), Anself ANT+ Sticks and Generic PL2303 Adapter. 
+This project has been tested with the following devices:
+
+- Kettler Ergoracer GT
+- Raspberry Pi 3B/4 (Raspbian Bullseye)
+- Anself ANT+ sticks
+- Generic PL2303 RS232 adapter 

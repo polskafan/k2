@@ -5,7 +5,7 @@ GROUPID=$(id -g)
 BASE_DIRECTORY=$(pwd)
 
 # Install ANT+ Driver
-sudo cp scripts/udev/51-garmin.rules /etc/udev/rules.d
+sudo cp scripts/udev/51-antplus.rules /etc/udev/rules.d
 sudo cp scripts/udev/99-kettler.rules /etc/udev/rules.d
 sudo udevadm trigger
 

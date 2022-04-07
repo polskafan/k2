@@ -19,7 +19,7 @@ class ANTController:
     async def ant_task(self):
         self.loop = asyncio.get_event_loop()
 
-        antnode = Node(driver.USB1Driver(device=antplus['device']))
+        antnode = Node(driver.USB2Driver())
         try:
             antnode.start()
             network = Network(key=NETWORK_KEY_ANT_PLUS, name='N:ANT+')
