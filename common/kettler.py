@@ -11,6 +11,9 @@ class Kettler:
         self.SET_POWER = "PW %d\r\n"
         self.RESET = "RS\r\n"
 
+    async def close(self):
+        self.serial_port.close()
+
     async def rpc(self, message):
         await self.serial_port.write_async(message.encode("utf-8"))
         self.serial_port.flush()

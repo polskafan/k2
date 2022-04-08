@@ -31,43 +31,51 @@ class Kettler2MQTT(Component2MQTT):
                 pass
 
     async def kettler_task(self):
-        # connect to bike
-        self.kettler = Kettler(serial_port=kettler['port'])
-
-        print("[Kettler] Bike %s" % await self.kettler.getId())
-
-        await self.kettler.reset()
-        await asyncio.sleep(0.2)
-        await self.kettler.changeMode()
-
-        # init state
-        self.dist = 0
-        last_status_timestamp = round(time.monotonic() * 1000)
-        last_status_message = None
-
         while True:
             try:
-                status = await self.kettler.setPower(self.target_power)
+                # connect to bike
+                self.kettler = Kettler(serial_port=kettler['port'])
 
-                if status is not None:
-                    time_elapsed = time.monotonic() - last_status_timestamp
-                    last_status_timestamp = time.monotonic()
+                print("[Kettler] Bike %s" % await self.kettler.getId())
 
-                    if status['speed'] > 0:
-                        speed = status['speed'] / 3.6
-                        self.dist += speed * time_elapsed
-
-                    status['calcDistance'] = int(self.dist)
-
-                    if status != last_status_message:
-                        await self.update_mqtt("kettler/data", status, precise_timestamps=True)
-                        last_status_message = status
-
+                await self.kettler.reset()
                 await asyncio.sleep(0.2)
+                await self.kettler.changeMode()
+
+                # init state
+                self.dist = 0
+                last_status_timestamp = round(time.monotonic() * 1000)
+                last_status_message = None
+
+                while True:
+                    status = await self.kettler.setPower(self.target_power)
+
+                    if status is not None:
+                        time_elapsed = time.monotonic() - last_status_timestamp
+                        last_status_timestamp = time.monotonic()
+
+                        if status['speed'] > 0:
+                            speed = status['speed'] / 3.6
+                            self.dist += speed * time_elapsed
+
+                        status['calcDistance'] = int(self.dist)
+
+                        if status != last_status_message:
+                            await self.update_mqtt("kettler/data", status, precise_timestamps=True)
+                            last_status_message = status
+
+                    await asyncio.sleep(0.2)
+            except IOError:
+                print("[Kettler] IO Error. Reconnecting...")
+                try:
+                    await self.kettler.close()
+                except IOError:
+                    pass
+                await asyncio.sleep(2)
             except asyncio.CancelledError:
                 await asyncio.sleep(0.2)
                 print("[Kettler] Disconnected")
-                break
+                return
 
 async def main():
     mqtt_server = Kettler2MQTT(mqtt_credentials)

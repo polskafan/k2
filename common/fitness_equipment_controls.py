@@ -1,6 +1,7 @@
 # Thanks to the original work of
 # https://github.com/dhague/vpower
 
+import common.ant_loader
 from ant.core import message, node, constants
 from ant.core.exceptions import ChannelError
 from dataclasses import dataclass
@@ -15,7 +16,7 @@ class FitnessEquipmentData:
     instant_heartrate: int = None   # unit: 1 bpm
 
 
-class FitnessEquipmentTX:
+class FitnessEquipmentControls:
     def __init__(self, antnode, sensor_id, callbacks=None):
         self.tick = 0
         self.update_event = 0
@@ -49,24 +50,21 @@ class FitnessEquipmentTX:
         self.channel.unassign()
 
     def update(self):
-        try:
-            # transmission pattern "C"
-            if self.tick % 132 in [64, 65]:
-                payload = self.page_vendor()
-            elif self.tick % 132 in [130, 131]:
-                payload = self.page_product()
-            elif self.tick % 66 % 8 in [3, 6]:
-                payload = self.page_settings()
-            elif self.tick % 66 % 8 in [2, 7]:
-                payload = self.page_stationary_bike()
-                self.update_event += 1
-            else:
-                payload = self.page_general()
+        # transmission pattern "C"
+        if self.tick % 132 in [64, 65]:
+            payload = self.page_vendor()
+        elif self.tick % 132 in [130, 131]:
+            payload = self.page_product()
+        elif self.tick % 66 % 8 in [3, 6]:
+            payload = self.page_settings()
+        elif self.tick % 66 % 8 in [2, 7]:
+            payload = self.page_stationary_bike()
+            self.update_event += 1
+        else:
+            payload = self.page_general()
 
-            self.antnode.send(message.ChannelBroadcastDataMessage(self.channel.number, data=bytearray(payload)))
-            self.tick += 1
-        except Exception as e:
-            print("Exception in FitnessEquipmentTX: " + repr(e))
+        self.antnode.send(message.ChannelBroadcastDataMessage(self.channel.number, data=bytearray(payload)))
+        self.tick += 1
 
     def page_general(self):
         # general data page

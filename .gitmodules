@@ -1,0 +1,3 @@
+[submodule "common/python-ant"]
+	path = common/python-ant
+	url = https://github.com/polskafan/python-ant.git
