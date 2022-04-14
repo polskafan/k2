@@ -4,6 +4,9 @@ USERID=$(id -u)
 GROUPID=$(id -g)
 BASE_DIRECTORY=$(pwd)
 
+# Install ANT package
+ln -s common/_ant/src ant
+
 # Install ANT+ Driver
 sudo cp scripts/udev/51-antplus.rules /etc/udev/rules.d
 sudo cp scripts/udev/99-kettler.rules /etc/udev/rules.d
