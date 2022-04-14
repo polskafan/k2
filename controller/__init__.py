@@ -1,7 +1,7 @@
 import asyncio
 import os
 
-from common.mqtt_component import Component2MQTT
+from common.mqtt_component import Component2MQTT, handle_pattern
 from config import mqtt_credentials
 from controller.gpx import GPXController
 from controller.antplus import ANTController
@@ -12,9 +12,6 @@ class ControllerManager2MQTT(Component2MQTT):
         super().__init__(mqtt)
 
         self.track_mode = None
-
-        self.register_handler("controller/cmnd/+", self.handle_command_messages)
-        self.register_handler("kettler/data", self.handle_kettler_messages)
 
         self.controllers = {
             "gpx": GPXController(self)
@@ -34,6 +31,7 @@ class ControllerManager2MQTT(Component2MQTT):
         for controller in self.controllers.values():
             await controller.init_state()
 
+    @handle_pattern(topic_pattern="controller/cmnd/+")
     async def handle_command_messages(self, messages):
         async for message in messages:
             action = message.topic.split("/")[-1]
@@ -53,6 +51,7 @@ class ControllerManager2MQTT(Component2MQTT):
                 if controller is not None:
                     await controller.handle_command_message(message)
 
+    @handle_pattern(topic_pattern="kettler/data")
     async def handle_kettler_messages(self, messages):
         async for message in messages:
             controller = self.controllers.get(self.track_mode)

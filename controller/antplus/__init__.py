@@ -1,6 +1,5 @@
 import asyncio
 
-import common.ant_loader
 from ant.core.exceptions import ANTException
 from ant.core.node import Node, Network
 from ant.core.constants import NETWORK_KEY_ANT_PLUS, NETWORK_NUMBER_PUBLIC

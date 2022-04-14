@@ -5,15 +5,19 @@ import time
 from contextlib import AsyncExitStack
 from common.json_encoder import EnhancedJSONEncoder
 
+def handle_pattern(topic_pattern):
+    def _handle_pattern(f):
+        f.topic_pattern = topic_pattern
+        return f
+    return _handle_pattern
+
 class Component2MQTT:
     def __init__(self, mqtt):
         self.mqtt = mqtt
         self.client = None
         self.handler_tasks = []
-        self.handlers = dict()
 
-    def register_handler(self, topic_pattern, handler):
-        self.handlers[topic_pattern] = handler
+        self.handlers = dict()
 
     async def mqtt_connect(self, will_topic):
         while True:
@@ -32,11 +36,14 @@ class Component2MQTT:
                     await self.on_connect()
 
                     # create handler tasks
-                    for (topic_pattern, handler) in self.handlers.items():
-                        messages = await stack.enter_async_context(
-                            self.client.filtered_messages(f"{self.mqtt['base_topic']}/{topic_pattern}"))
-                        self.handler_tasks.append(asyncio.create_task(handler(messages)))
-                        await self.client.subscribe(f"{self.mqtt['base_topic']}/{topic_pattern}")
+                    # find all registered handlers in class attributes
+                    for func in self.__class__.__dict__.values():
+                        if callable(func) and hasattr(func, "topic_pattern"):
+                            topic_pattern = getattr(func, "topic_pattern")
+                            messages = await stack.enter_async_context(
+                                self.client.filtered_messages(f"{self.mqtt['base_topic']}/{topic_pattern}"))
+                            self.handler_tasks.append(asyncio.create_task(func(self, messages)))
+                            await self.client.subscribe(f"{self.mqtt['base_topic']}/{topic_pattern}")
 
                     try:
                         if len(self.handlers):

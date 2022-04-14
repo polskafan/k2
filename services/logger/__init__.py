@@ -6,7 +6,7 @@ from datetime import datetime
 import csv
 import dataclasses
 from typing import IO
-from common.mqtt_component import Component2MQTT
+from common.mqtt_component import Component2MQTT, handle_pattern
 
 @dataclasses.dataclass
 class CSVWriter:
@@ -39,11 +39,6 @@ class MQTT2Log(Component2MQTT):
         self.log_location = False
         self.log_heartrate = False
         self.datapoint = LogDatapoint()
-
-        self.register_handler("logger/cmnd/+", self.handle_command_messages)
-        self.register_handler("kettler/data", self.handle_kettler_messages)
-        self.register_handler("controller/location", self.handle_location_messages)
-        self.register_handler("heartrate/+", self.handle_heartrate_messages)
 
     async def on_connect(self):
         await self.update_mqtt("logger/data", {"status": "ready"})
@@ -80,6 +75,7 @@ class MQTT2Log(Component2MQTT):
             self.csv = None
             self.log_location = False
 
+    @handle_pattern(topic_pattern="logger/cmnd/+")
     async def handle_command_messages(self, messages):
         async for message in messages:
             try:
@@ -98,6 +94,7 @@ class MQTT2Log(Component2MQTT):
             except json.JSONDecodeError:
                 pass
 
+    @handle_pattern(topic_pattern="kettler/data")
     async def handle_kettler_messages(self, messages):
         async for message in messages:
             try:
@@ -114,6 +111,7 @@ class MQTT2Log(Component2MQTT):
             except json.JSONDecodeError:
                 pass
 
+    @handle_pattern(topic_pattern="heartrate/+")
     async def handle_heartrate_messages(self, messages):
         async for message in messages:
             try:
@@ -129,6 +127,7 @@ class MQTT2Log(Component2MQTT):
             except json.JSONDecodeError:
                 pass
 
+    @handle_pattern(topic_pattern="controller/location")
     async def handle_location_messages(self, messages):
         async for message in messages:
             try:

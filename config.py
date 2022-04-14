@@ -24,8 +24,8 @@ gpx = {
 power = {
     "lower_limit": 25,
     "upper_limit": 600,
-    "min_power": 80,
-    "max_power": 280,
+    "min_power": 90,
+    "max_power": 200,
     "max_grade": 0.15,
     "minmax": lambda value, lower, upper: min(upper, max(value, lower)),
     "grade": lambda grade: power['minmax'](value=(power['max_power'] - power['min_power']) * (grade / power['max_grade']) + power['min_power'],

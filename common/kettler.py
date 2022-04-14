@@ -25,18 +25,25 @@ class Kettler:
         return (await self.rpc(self.CHANGE_MODE)).decode("utf-8")
 
     async def reset(self):
-        return (await self.rpc(self.RESET)).decode("utf-8")
+        pass
+        # return (await self.rpc(self.RESET)).decode("utf-8")
 
     async def getId(self):
         return (await self.rpc(self.GET_ID)).decode("utf-8")
 
     async def setPower(self, power):
-        status_line = (await self.rpc(self.SET_POWER % power)).decode("utf-8")
-        return self.decode_status(status_line)
+        try:
+            status_line = (await self.rpc(self.SET_POWER % power)).decode("utf-8")
+            return self.decode_status(status_line)
+        except UnicodeDecodeError:
+            return None
 
     async def readStatus(self):
-        status_line = (await self.rpc(self.GET_STATUS)).decode("utf-8")
-        return self.decode_status(status_line)
+        try:
+            status_line = (await self.rpc(self.GET_STATUS)).decode("utf-8")
+            return self.decode_status(status_line)
+        except UnicodeDecodeError:
+            return None
 
     @staticmethod
     def decode_status(status_line):

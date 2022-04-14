@@ -3,7 +3,7 @@ import os
 import time
 from config import mqtt_credentials, kettler
 from common.kettler import Kettler
-from common.mqtt_component import Component2MQTT
+from common.mqtt_component import Component2MQTT, handle_pattern
 
 class Kettler2MQTT(Component2MQTT):
     def __init__(self, mqtt):
@@ -15,8 +15,7 @@ class Kettler2MQTT(Component2MQTT):
 
         self.task = asyncio.create_task(self.kettler_task())
 
-        self.register_handler("kettler/cmnd/+", self.handle_command_messages)
-
+    @handle_pattern(topic_pattern="kettler/cmnd/+")
     async def handle_command_messages(self, messages):
         async for message in messages:
             try:
@@ -41,6 +40,7 @@ class Kettler2MQTT(Component2MQTT):
                 await self.kettler.reset()
                 await asyncio.sleep(0.2)
                 await self.kettler.changeMode()
+                await asyncio.sleep(0.2)
 
                 # init state
                 self.dist = 0
@@ -48,9 +48,16 @@ class Kettler2MQTT(Component2MQTT):
                 last_status_message = None
 
                 while True:
-                    status = await self.kettler.setPower(self.target_power)
+                    temp_power = self.target_power - self.target_power % 5
+                    status = await self.kettler.setPower(temp_power)
+
+                    await asyncio.sleep(0.2)
 
                     if status is not None:
+                        if status['destPower'] != temp_power:
+                           await self.kettler.changeMode()
+                           await asyncio.sleep(0.2)
+
                         time_elapsed = time.monotonic() - last_status_timestamp
                         last_status_timestamp = time.monotonic()
 
@@ -63,8 +70,6 @@ class Kettler2MQTT(Component2MQTT):
                         if status != last_status_message:
                             await self.update_mqtt("kettler/data", status, precise_timestamps=True)
                             last_status_message = status
-
-                    await asyncio.sleep(0.2)
             except IOError:
                 print("[Kettler] IO Error. Reconnecting...")
                 try:
