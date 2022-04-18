@@ -1,0 +1,39 @@
+<html lang="en">
+<head>
+    <title>K2 - YouTube Controller</title>
+
+    <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="main.css">
+</head>
+
+<body>
+<div class="container">
+    <div class="YTContainer">
+        <div id="YTTrainerStatus"></div>
+        <div id="YTPlayer"></div>
+    </div>
+    <div id="KettlerStatus"></div>
+</div>
+
+<script type="module">
+    import {k2} from './k2.mjs';
+    import {KettlerStatusBar} from './statusbars.mjs';
+
+    new KettlerStatusBar('#kettlerStatus', k2);
+
+    import {workouts} from './config.mjs';
+    import {YouTubeTrianer} from "./youtube.mjs";
+
+    /* init player */
+    let tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+
+    let firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    window.onYouTubeIframeAPIReady = function() {
+        new YouTubeTrianer(YT, 'YTPlayer', '#YTTrainerStatus', k2, workouts[0]);
+    }
+</script>
+</body>
+</html>
