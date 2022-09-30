@@ -91,7 +91,7 @@ class FitnessEquipmentControls:
         ]
 
     def page_stationary_bike(self):
-        self.accumulated_power += self.data.instant_power*2
+        self.accumulated_power += self.data.instant_power
         self.accumulated_power %= 65536
 
         return [
@@ -100,8 +100,8 @@ class FitnessEquipmentControls:
             (self.data.instant_cadence or 0xFF) % 256,      # cadence - unit rpm
             self.accumulated_power & 0xFF,                  # accumulated power LSB - unit 1W
             self.accumulated_power >> 8,                    # accumulated power MSB - unit 1W
-            self.data.instant_power*2 & 0xFF,               # instant power LSB - unit 1W
-            (self.data.instant_power*2 >> 8) & 0xF,         # instant power MSN & trainer status
+            self.data.instant_power & 0xFF,                 # instant power LSB - unit 1W
+            (self.data.instant_power >> 8) & 0xF,           # instant power MSN & trainer status
             0x20                                            # capabilities & FE state
         ]
 

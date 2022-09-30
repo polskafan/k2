@@ -6,6 +6,7 @@ import bisect
 from itertools import accumulate
 from dataclasses import dataclass
 
+
 @dataclass
 class GPXTrackOverview:
     filename: str
@@ -25,6 +26,7 @@ class DistanceTrackInfo:
     elevation: float
     grade: float
     progress: float
+
 
 class GPXTrack:
     accumulated_distances = []

@@ -8,6 +8,7 @@ from common.fitness_equipment_controls import FitnessEquipmentControls
 from config import antplus, power
 import json
 
+
 class ANTController:
     def __init__(self, manager):
         self.manager = manager
@@ -28,11 +29,11 @@ class ANTController:
 
                 self.fitness_equipment = FitnessEquipmentControls(antnode, antplus['sensor_id'], callbacks={
                     'basic_resistance': lambda basic_resistance:
-                                            self.update_power(int(power['resistance'](basic_resistance/1000))),
+                    self.update_power(int(power['resistance'](basic_resistance / 1000))),
                     'target_power': lambda target_power:
-                                            self.update_power(int(target_power / 100)),
+                    self.update_power(int(target_power / 100)),
                     'track_resistance': lambda grade, coefficient:
-                                            self.update_power(int(power['grade'](grade / 10000))),
+                    self.update_power(int(power['grade'](grade / 10000))),
                     'wind_resistance': lambda **kwargs: print("[wind resistance]", kwargs)
                 })
                 self.fitness_equipment.open()
@@ -56,7 +57,7 @@ class ANTController:
         try:
             data = json.loads(message.payload.decode())
             minutes, seconds = data['payload']['timeElapsed'].split(":", 2)
-            self.fitness_equipment.data.time_elapsed = (int(minutes)*60 + int(seconds)) * 4
+            self.fitness_equipment.data.time_elapsed = (int(minutes) * 60 + int(seconds)) * 4
             self.fitness_equipment.data.speed = int(data['payload']['speed'] * 1000 / 3.6)
             self.fitness_equipment.data.resistance = int(data['payload']['realPower'] / 1200)
             self.fitness_equipment.data.instant_cadence = data['payload']['cadence']

@@ -21,6 +21,10 @@ gpx = {
     'path': '/home/pi/k2/tracks'
 }
 
+komoot = {
+    'user_id': 938424577470
+}
+
 power = {
     "lower_limit": 25,
     "upper_limit": 600,

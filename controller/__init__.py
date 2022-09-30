@@ -4,8 +4,10 @@ import os
 from common.mqtt_component import Component2MQTT, handle_pattern
 from config import mqtt_credentials
 from controller.gpx import GPXController
+from controller.komoot import KomootController
 from controller.antplus import ANTController
 import json
+
 
 class ControllerManager2MQTT(Component2MQTT):
     def __init__(self, mqtt):
@@ -14,12 +16,13 @@ class ControllerManager2MQTT(Component2MQTT):
         self.track_mode = None
 
         self.controllers = {
-            "gpx": GPXController(self)
+            "gpx": GPXController(self),
+            "komoot": KomootController(self)
         }
 
         self.ant = ANTController(self)
 
-    async def set_track_mode(self, track_mode = None):
+    async def set_track_mode(self, track_mode=None):
         self.track_mode = track_mode
         await self.update_mqtt("controller/trackMode", track_mode)
 
@@ -68,9 +71,11 @@ class ControllerManager2MQTT(Component2MQTT):
         if self.track_mode == "ant":
             await self.send_command("kettler/cmnd/power", power)
 
+
 async def main():
     mqtt_server = ControllerManager2MQTT(mqtt_credentials)
     await asyncio.gather(mqtt_server.mqtt_connect(will_topic="controller"))
+
 
 def run():
     # Change to the "Selector" event loop for Windows
@@ -81,6 +86,7 @@ def run():
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Goodbye...")
+
 
 if __name__ == '__main__':
     run()

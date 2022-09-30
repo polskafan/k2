@@ -7,7 +7,7 @@ let config = {
     },
     "power": {
         "min": 80,
-        "max": 180
+        "max": 130
     }
 }
 
