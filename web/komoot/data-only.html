@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Kalmit Simulator</title>
+        <meta charset="utf-8"/>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/fast-json-patch/3.0.0-1/fast-json-patch.min.js"
+                integrity="sha512-vVRywehVT8BlSgCmFvmIxX09WuK1D3HLh0pf4LC6ReToNfHyiyjduZ286Qpz+xourcLS0Lv5rkkWVc/6r0xisg=="
+                crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/reconnecting-websocket@4.4.0/dist/reconnecting-websocket-iife.min.js"
+                integrity="sha256-mDcN+obMdcysir+NIq4iFZF4WT1onBMI8q19ohS7pcc="
+                crossorigin="anonymous"></script>
+
+        <!-- Google Maps -->
+        <script src="https://www.google.com/jsapi?key=AIzaSyBLziFre_LrJgtmA0kczUgsORlzILumZas&hl=de"></script>
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBLziFre_LrJgtmA0kczUgsORlzILumZas&libraries=geometry"></script>
+        <script src="map.js"></script>
+
+        <!-- Elevation Profile -->
+        <script src="http://d3js.org/d3.v5.min.js"></script>
+        <script src="elevation.js"></script>
+
+        <style>
+            body {
+                background-color: grey;
+            }
+
+            .table {
+                border-collapse: separate;
+                width: 100%;
+                border-spacing: 3px;
+            }
+
+            .table-row {
+                width: 100%;
+            }
+
+            .table-data {
+                display: table-cell;
+                font-family: "Roboto",serif;
+                font-weight: 600;
+                color: white;
+                font-size: 1em;
+                background-color: rgba(0, 0, 0, 0.8);
+                padding: 6px;
+                vertical-align: middle;
+            }
+
+            .name {
+                text-align: center;
+                width: 10%;
+                padding: 5px 10px;
+            }
+
+            .track {
+                text-align: center;
+                width: 10%;
+                padding: 4px 4px;
+                font-size: 0.9em;
+            }
+
+            .screen {
+                width: 100%;
+                height: 100%;
+                vertical-align: middle;
+            }
+
+            .map {
+                width: 100%;
+                height: 44vh;
+                border: 1px solid gray;
+                margin-top:6px;
+            }
+
+            #elevation-outlet {
+                margin: 3px;
+                background-color: rgba(0, 0, 0, 0.8);
+            }
+
+            .elevationAxis {
+                color: white;
+            }
+        </style>
+
+        <script>
+            import('/static/flexpolyline.js').then(function(m) {
+                window.flexpolyline = m;
+            });
+
+            function updateData(s) {
+                // language=HTML
+                document.getElementById('track-outlet').innerHTML = `
+                    <table class="table">
+                    <thead><tr>
+                        <td class="table-data name" colspan="5">Track Name: ${s.track.name}</td>
+                    </tr>
+                    <tr>
+                        <td class="table-data track">Total Distance</td>
+                        <td class="table-data track">Total Ascend</td>
+                        <td class="table-data track">Total Descend</td>
+                        <td class="table-data track">Max Ascend</td>
+                        <td class="table-data track">Max Descend</td>
+                    </tr></thead>
+                    <tbody><tr>
+                        <td class="table-data track">${(s.track.distance/1000).toFixed(2)} km</td>
+                        <td class="table-data track">+${s.track.ascent_m.toFixed(1)} m</td>
+                        <td class="table-data track">${s.track.descend_m.toFixed(1)} m</td>
+                        <td class="table-data track">+${s.track['ascent_%'].toFixed(1)} %</td>
+                        <td class="table-data track">${s.track['descend_%'].toFixed(1)} %</td>
+                    </tr>
+                    <tbody></tbody>
+                    </table>
+                `;
+
+                // language=HTML
+                let heartrate_head = (s && s.heartrate && s.heartrate.hr) ? `
+                    <td class="table-data name">HR </td>
+                    <td class="table-data name">RRI</td>
+                ` : "";
+                // language=HTML
+                let heartrate_body = (s && s.heartrate && s.heartrate.hr) ? `
+                    <td class="table-data name">${s.heartrate.hr}</td>
+                    <td class="table-data name">${(s.heartrate.rr !== null) ? (s.heartrate.rr/1000).toFixed(2) + " s" : "?"}</td>
+                ` : "";
+
+                // language=HTML
+                document.getElementById('data-outlet').innerHTML = `
+                    <table class="table">
+                    <thead><tr>
+                        <td class="table-data name">Time</td>
+                        <td class="table-data name">Speed</td>
+                        <td class="table-data name">Cadence</td>
+                        <td class="table-data name">Distance</td>
+                        <td class="table-data name">Grade</td>
+                        <td class="table-data name">Power</td>
+                        <td class="table-data name">Progress</td>
+                        ${heartrate_head}
+                    </tr></thead>
+                    <tbody><tr>
+                        <td class="table-data name">${s.bike.timeElapsed}</td>
+                        <td class="table-data name">${s.bike.speed} km/h</td>
+                        <td class="table-data name">${s.bike.cadence} rpm</td>
+                        <td class="table-data name">${s.progress.distance} km</td>
+                        <td class="table-data name">${s.progress.grade} %</td>
+                        <td class="table-data name">${s.progress.target_power} W</td>
+                        <td class="table-data name">${s.progress.percent} %</td>
+                        ${heartrate_body}
+                    </tr></tbody>
+                    </table>
+                `;
+            }
+
+            window.onload = function() {
+                try {
+                    window.sock = new ReconnectingWebSocket('ws://192.168.1.144:8080/ws');
+                } catch (err) {
+                    window.sock = new ReconnectingWebSocket('wss://192.168.1.144:8080/ws');
+                }
+                sock.onopen = function () {
+                    window.sock.send('{"action": "subscribe"}');
+                };
+
+                sock.onmessage = function (event) {
+                    let msg = JSON.parse(event.data);
+
+                    if (msg.action === "initial_state") {
+                        window.state = msg.payload;
+
+                        let path = window.flexpolyline.decode(window.state.track.polyline);
+                        updateElevation(path.polyline, window.state.track.highlights);
+                    }
+
+                    if (msg.action === "patch") {
+                        window.state = jsonpatch.applyPatch(window.state, JSON.parse(msg.payload)).newDocument;
+                    }
+
+                    updateDistance(window.state.progress.distance);
+                    updateData(window.state);
+                };
+            }
+        </script>
+    </head>
+
+    <body>
+        <div class="screen">
+            <div id="data-outlet"></div>
+            <div id="track-outlet"></div>
+            <div id="elevation-outlet" style="height: 10%; width: 100%;"></div>
+        </div>
+    </body>
+</html>

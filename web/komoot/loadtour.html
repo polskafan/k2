@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Kalmit Simulator</title>
+        <meta charset="utf-8"/>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/fast-json-patch/3.0.0-1/fast-json-patch.min.js"
+                integrity="sha512-vVRywehVT8BlSgCmFvmIxX09WuK1D3HLh0pf4LC6ReToNfHyiyjduZ286Qpz+xourcLS0Lv5rkkWVc/6r0xisg=="
+                crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/reconnecting-websocket@4.4.0/dist/reconnecting-websocket-iife.min.js"
+                integrity="sha256-mDcN+obMdcysir+NIq4iFZF4WT1onBMI8q19ohS7pcc="
+                crossorigin="anonymous"></script>
+
+        <script>
+            function updateData(s) {
+                document.querySelector('#tour-outlet').innerHTML = '';
+                let tours = s.tours || [];
+                for (let tour of tours) {
+                    document.querySelector('#tour-outlet').innerHTML += `<p><button onclick="setTour('${tour.tour_id}')">${(tour.distance/1000).toFixed(0)} km | ${tour.name}</button></p>`;
+                }
+            }
+
+            function setTour(tid) {
+                console.log(tid);
+                window.sock.send(JSON.stringify({action: "loadTour", tourId: tid}));
+            }
+
+            window.onload = function() {
+                try {
+                    window.sock = new ReconnectingWebSocket('ws://192.168.1.59:8080/ws');
+                } catch (err) {
+                    window.sock = new ReconnectingWebSocket('wss://192.168.1.59:8080/ws');
+                }
+                sock.onopen = function () {
+                    window.sock.send('{"action": "subscribe"}');
+                };
+
+                sock.onmessage = function (event) {
+                    let msg = JSON.parse(event.data);
+
+                    if (msg.action === "initial_state") {
+                        window.state = msg.payload;
+                    }
+
+                    if (msg.action === "patch") {
+                        window.state = jsonpatch.applyPatch(window.state, JSON.parse(msg.payload)).newDocument;
+                    }
+
+                    updateData(window.state);
+                };
+            }
+        </script>
+    </head>
+
+    <body>
+        <div id="tour-outlet"></div>
+    </body>
+</html>

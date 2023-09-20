@@ -6,6 +6,7 @@ import bisect
 from itertools import accumulate
 import requests
 from dataclasses import dataclass
+import time
 
 
 @dataclass
@@ -227,7 +228,13 @@ class KomootTour:
 
     @staticmethod
     def getTours(user_id):
-        r_tour = requests.get('https://www.komoot.com/api/v007/users/%d/tours/?type=tour_planned&status=public' % user_id)
+        for _ in range(5):
+            try:
+                r_tour = requests.get('https://www.komoot.com/api/v007/users/%d/tours/?type=tour_planned&status=public' % user_id)
+                break
+            except requests.exceptions.RequestException:
+                time.sleep(10)
+                pass
         d_tour = r_tour.json()
 
         tours = []

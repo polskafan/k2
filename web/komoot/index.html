@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>K2 Komoot Controller</title>
+        <meta charset="utf-8"/>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/fast-json-patch/3.0.0-1/fast-json-patch.min.js"
+                integrity="sha512-vVRywehVT8BlSgCmFvmIxX09WuK1D3HLh0pf4LC6ReToNfHyiyjduZ286Qpz+xourcLS0Lv5rkkWVc/6r0xisg=="
+                crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/reconnecting-websocket@4.4.0/dist/reconnecting-websocket-iife.min.js"
+                integrity="sha256-mDcN+obMdcysir+NIq4iFZF4WT1onBMI8q19ohS7pcc="
+                crossorigin="anonymous"></script>
+
+        <!-- MQTT -->
+        <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+
+        <!-- Google Maps -->
+        <script src="https://www.google.com/jsapi?key=AIzaSyBLziFre_LrJgtmA0kczUgsORlzILumZas&hl=de"></script>
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBLziFre_LrJgtmA0kczUgsORlzILumZas&libraries=geometry"></script>
+        <script src="map.js"></script>
+
+        <!-- Elevation Profile -->
+        <script src="http://d3js.org/d3.v5.min.js"></script>
+        <script src="elevation.js"></script>
+
+        <style>
+            #map > div {
+              background-color: rgba(128, 128, 128, 0.5) !important;
+            }
+
+            .gm-style div {
+              -webkit-transform: scale(1.002);
+            }
+
+            body {
+                background-color: grey;
+            }
+
+            .table {
+                border-collapse: separate;
+                width: 100%;
+                border-spacing: 3px;
+            }
+
+            .table-row {
+                width: 100%;
+            }
+
+            .table-data {
+                display: table-cell;
+                font-family: "Roboto",serif;
+                font-weight: 600;
+                color: white;
+                font-size: 1em;
+                background-color: rgba(0, 0, 0, 0.8);
+                padding: 6px;
+                vertical-align: middle;
+            }
+
+            .name {
+                text-align: center;
+                width: 10%;
+                padding: 5px 10px;
+            }
+
+            .track {
+                text-align: center;
+                width: 10%;
+                padding: 4px 4px;
+                font-size: 0.9em;
+            }
+
+            .screen {
+                width: 100%;
+                height: 100%;
+                vertical-align: middle;
+            }
+
+            .map {
+                width: 100%;
+                height: 44vh;
+                border: 1px solid gray;
+                margin-top:6px;
+            }
+
+            #elevation-outlet {
+                margin: 3px;
+                background-color: rgba(0, 0, 0, 0.8);
+            }
+
+            .elevationAxis {
+                color: white;
+            }
+        </style>
+
+        <script>
+            import('/komoot/flexpolyline.js').then(function(m) {
+                window.flexpolyline = m;
+            });
+
+            function updateData(s) {
+                // language=HTML
+                document.getElementById('track-outlet').innerHTML = `
+                    <table class="table">
+                    <thead><tr>
+                        <td class="table-data name" colspan="5">Track Name: ${s.track.name}</td>
+                    </tr>
+                    <tr>
+                        <td class="table-data track">Total Distance</td>
+                        <td class="table-data track">Total Ascend</td>
+                        <td class="table-data track">Total Descend</td>
+                        <td class="table-data track">Max Ascend</td>
+                        <td class="table-data track">Max Descend</td>
+                    </tr></thead>
+                    <tbody><tr>
+                        <td class="table-data track">${(s.track.distance/1000).toFixed(2)} km</td>
+                        <td class="table-data track">+${s.track.ascent_m.toFixed(1)} m</td>
+                        <td class="table-data track">${s.track.descend_m.toFixed(1)} m</td>
+                        <td class="table-data track">+${s.track['ascent_%'].toFixed(1)} %</td>
+                        <td class="table-data track">${s.track['descend_%'].toFixed(1)} %</td>
+                    </tr>
+                    <tbody></tbody>
+                    </table>
+                `;
+
+                // language=HTML
+                let heartrate_head = (s && s.heartrate && s.heartrate.hr) ? `
+                    <td class="table-data name">HR </td>
+                    <td class="table-data name">RRI</td>
+                ` : "";
+                // language=HTML
+                let heartrate_body = (s && s.heartrate && s.heartrate.hr) ? `
+                    <td class="table-data name">${s.heartrate.hr}</td>
+                    <td class="table-data name">${(s.heartrate.rr !== null) ? (s.heartrate.rr/1000).toFixed(2) + " s" : "?"}</td>
+                ` : "";
+
+                if (s && s.fan && s.fan['Dimmer'] !== null) {
+                    var dimmer = (s.fan.POWER === "OFF") ? 0 : s.fan['Dimmer'];
+                }
+
+                // language=HTML
+                let fan_head = (s && s.fan && s.fan['Dimmer'] !== null) ? `
+                    <td class="table-data name">Fan</td>
+                ` : "";
+
+                // language=HTML
+                let fan_body = (s && s.fan && s.fan['Dimmer'] !== null) ? `
+                    <td class="table-data name">${dimmer} %</td>
+                ` : "";
+
+                // language=HTML
+                document.getElementById('data-outlet').innerHTML = `
+                    <table class="table">
+                    <thead><tr>
+                        <td class="table-data name">Time</td>
+                        <td class="table-data name">Speed</td>
+                        <td class="table-data name">Cadence</td>
+                        <td class="table-data name">Distance</td>
+                        <td class="table-data name">Grade</td>
+                        <td class="table-data name">Power</td>
+                        <td class="table-data name">Progress</td>
+                        ${fan_head}
+                        ${heartrate_head}
+                    </tr></thead>
+                    <tbody><tr>
+                        <td class="table-data name">${s.kettler.timeElapsed}</td>
+                        <td class="table-data name">${s.kettler.speed} km/h</td>
+                        <td class="table-data name">${s.kettler.cadence} rpm</td>
+                        <td class="table-data name">${(s.kettler.calcDistance / 1000).toFixed(1)} km</td>
+                        <td class="table-data name">${s.progress.grade.toFixed(1)} %</td>
+                        <td class="table-data name">${s.kettler.destPower} W</td>
+                        <td class="table-data name">${(s.progress.progress / 100).toFixed(1)} %</td>
+                        ${fan_body}
+                        ${heartrate_body}
+                    </tr></tbody>
+                    </table>
+                `;
+
+                // check if the highlight has changed
+                if (s.highlight !== undefined && s.highlight.name !== undefined) {
+                    if (s.highlight.front_image.src !== window.currentHighlight) {
+                        // language=HTML
+                        document.getElementById('highlight-outlet').innerHTML = `
+                            <table class="table">
+                            <thead><tr>
+                                <td class="table-data name">${s.highlight.name}</td>
+                            </tr></thead>
+                            <tbody>
+                            <tr>
+                                <td class="table-data name"><img src="${s.highlight.front_image.src}?width=1200&height=1000&q=95" style="max-width: 70vw; max-height: 32vh; height: auto; width: auto;" /></td>
+                            </tr>
+                            <tr>
+                                <td class="table-data name">Photo by ${s.highlight.front_image.creator.display_name}</td>
+                            </tr>
+                            </tbody>
+                            </table>
+                        `;
+                        window.currentHighlight = s.highlight.front_image.src;
+                        document.getElementById('highlight-outlet').hidden = false;
+                    }
+                } else {
+                    document.getElementById('highlight-outlet').innerHTML = "";
+
+                    document.getElementById('highlight-outlet').hidden = true;
+                    window.currentHighlight = "";
+                }
+            }
+
+            window.onload = function() {
+                const mqtt_client = mqtt.connect("ws://kalmitTimo.local:8083");
+
+                mqtt_client.on("connect", function() {
+                    mqtt_client.subscribe("k2/controller/track");
+                    mqtt_client.subscribe("k2/controller/location");
+                    mqtt_client.subscribe("k2/controller/highlight");
+                    mqtt_client.subscribe("k2/kettler/data");
+
+                    window.state = {};
+                });
+
+                mqtt_client.on("message", function (topic, payload) {
+                    console.log(topic, payload.toString());
+                    switch(topic) {
+                        case "k2/kettler/data":
+                            window.state.kettler = (JSON.parse(payload.toString())).payload;
+                            break;
+                        case "k2/controller/track":
+                            window.state.track = (JSON.parse(payload.toString())).payload;
+                            let path = window.flexpolyline.decode(window.state.track.polyline);
+                            updatePath(path.polyline);
+                            updateElevation(path.polyline, window.state.track.highlights);
+                            break;
+                        case "k2/controller/location":
+                            window.state.progress = (JSON.parse(payload.toString())).payload;
+                            break;
+                        case "k2/controller/highlight":
+                            window.state.highlight = (JSON.parse(payload.toString())).payload;
+                            break;
+                    }
+
+                    console.log(window.state);
+                    if ("track" in window.state && "progress" in window.state && "kettler" in window.state) {
+                        updateDistance(window.state.progress.distance);
+                        updateLocation(window.state.progress.latitude, window.state.progress.longitude);
+                        updateData(window.state);
+                    }
+                });
+
+                /* try {
+                    window.sock = new ReconnectingWebSocket('ws://192.168.1.59:8080/ws');
+                } catch (err) {
+                    window.sock = new ReconnectingWebSocket('wss://192.168.1.59:8080/ws');
+                }
+                sock.onopen = function () {
+                    window.sock.send('{"action": "subscribe"}');
+                };
+
+                sock.onmessage = function (event) {
+                    let msg = JSON.parse(event.data);
+
+                    if (msg.action === "initial_state") {
+                        window.state = msg.payload;
+
+                        let path = window.flexpolyline.decode(window.state.track.polyline);
+                        updatePath(path.polyline);
+                        updateElevation(path.polyline, window.state.track.highlights);
+                    }
+
+                    if (msg.action === "patch") {
+                        window.state = jsonpatch.applyPatch(window.state, JSON.parse(msg.payload)).newDocument;
+                    }
+
+                    updateDistance(window.state.progress.distance);
+                    updateLocation(window.state.progress.latitude, window.state.progress.longitude);
+                    updateData(window.state);
+                }; */
+
+                // init map
+                initializeMap();
+            }
+        </script>
+    </head>
+
+    <body>
+        <div class="screen">
+            <div id="data-outlet"></div>
+            <div style="display: table; width: 100%;">
+                <div style="display: table-row;">
+                    <div style="display: table-cell;" id="map" class="map"></div>
+                    <div style="display: table-cell; vertical-align: middle;" hidden="hidden" id="highlight-outlet"></div>
+                </div>
+            </div>
+            <div id="track-outlet"></div>
+            <div id="elevation-outlet" style="height: 10%; width: 100%;"></div>
+        </div>
+    </body>
+</html>
